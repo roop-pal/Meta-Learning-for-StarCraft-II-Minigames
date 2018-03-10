@@ -7,6 +7,9 @@ Include here any information that we use for the project: papers, tutorial links
 - [Main SC2LE repo (DeepMind)](https://github.com/deepmind/pysc2)
 - [Good resources on SC2LE including a setup tutorial](https://njustesen.com/)
 
+## Multi-agent methods:
+
+- [Presentation of COMA](https://www.youtube.com/watch?v=3OVvjE5B9LU)
 ## Reinforcement Learning:
 
 - [IEOR 8100 lecture notes](https://ieor8100.github.io/rl/)
