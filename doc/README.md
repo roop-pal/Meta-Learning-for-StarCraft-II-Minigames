@@ -6,6 +6,9 @@ Include here any information that we use for the project: papers, tutorial links
 
 - [Main SC2LE repo (DeepMind)](https://github.com/deepmind/pysc2)
 - [Good resources on SC2LE including a setup tutorial](https://njustesen.com/)
+- [A student project on SC2](https://github.com/telecombcn-dl/2017-dlai-team5)
+- [A tutorial on creating a scripted bot](https://github.com/iDTechHub/SC2LE)
+- [An unofficial implementation of the RL agents described in the SC2LE paper](https://github.com/xhujoy/pysc2-agents)
 
 ## Multi-agent methods:
 
