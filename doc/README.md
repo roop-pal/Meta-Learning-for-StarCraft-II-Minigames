@@ -15,8 +15,9 @@ Include here any information that we use for the project: papers, tutorial links
 - [(telecombcn) A student project on SC2 (Telecom BCN) that wraps the two implementations above](https://github.com/telecombcn-dl/2017-dlai-team5)
 
 ## Other RL agents implemented for SC2:
-- [(peekalto) A2C (synchronous version of A3C), and PPO (Proximal Policy Optimization](https://github.com/pekaalto/sc2aibot)
-- [(vwxyzjn) An implementation of PPO using OpenAI Gym (with sc2gym) and Tensorfoce for a cleaner and more modular implementation](https://github.com/vwxyzjn/SC2AI)
+- [(peekalto) A2C (synchronous version of A3C), and PPO (Proximal Policy Optimization)](https://github.com/pekaalto/sc2aibot)
+- [(vwxyzjn) PPO using OpenAI Gym (with sc2gym) and Tensorfoce for a cleaner and more modular implementation](https://github.com/vwxyzjn/SC2AI)
+-[(chris-chris) DQN and A2C](https://github.com/chris-chris/pysc2-examples)
 
 ## Multi-agent methods:
 
