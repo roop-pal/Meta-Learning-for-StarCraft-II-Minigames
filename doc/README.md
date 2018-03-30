@@ -11,6 +11,8 @@ Include here any information that we use for the project: papers, tutorial links
 - [An unofficial implementation of the RL agents described in the SC2LE paper (Xhu Joy)](https://github.com/xhujoy/pysc2-agents)
 - [A discord group for people working on SC2LE](https://discord.gg/vEZmYqB)
 
+Note that the team from Telecom BCN actually used two already existing implementations of A3C for SC2, [this one (Xhu Joy)](https://github.com/xhujoy/pysc2-agents) and [this one (greentfrapp)](https://github.com/greentfrapp/pysc2-RLagents). The second one heavily relies on the work of Arthur Juliani who implemented A3C for the game Doom.
+
 ## Multi-agent methods:
 
 - [Presentation of COMA on YouTube](https://www.youtube.com/watch?v=3OVvjE5B9LU)
