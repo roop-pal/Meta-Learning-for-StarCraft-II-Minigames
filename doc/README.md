@@ -6,12 +6,17 @@ Include here any information that we use for the project: papers, tutorial links
 
 - [Main SC2LE repo (DeepMind)](https://github.com/deepmind/pysc2)
 - [Good resources on SC2LE including a setup tutorial (Niels Justesen)](https://njustesen.com/)
-- [A student project on SC2 (Telecom BCN)](https://github.com/telecombcn-dl/2017-dlai-team5)
 - [A tutorial on creating a scripted bot (iDTechHub)](https://github.com/iDTechHub/SC2LE)
-- [An unofficial implementation of the RL agents described in the SC2LE paper (Xhu Joy)](https://github.com/xhujoy/pysc2-agents)
 - [A discord group for people working on SC2LE](https://discord.gg/vEZmYqB)
 
-Note that the team from Telecom BCN actually used two already existing implementations of A3C for SC2, [this one (Xhu Joy)](https://github.com/xhujoy/pysc2-agents) and [this one (greentfrapp)](https://github.com/greentfrapp/pysc2-RLagents). The second one heavily relies on the work of Arthur Juliani who implemented A3C for the game Doom.
+## Implementations of A3C for SC2:
+- [(greetfrapp) An clean implementation based on the work of Arthur Juliani who implemented A3C for the game Doom](https://github.com/greentfrapp/pysc2-RLagents)
+- [(xhujoy) Another implementation](https://github.com/xhujoy/pysc2-agents)
+- [(telecombcn) A student project on SC2 (Telecom BCN) that wraps the two implementations above](https://github.com/telecombcn-dl/2017-dlai-team5)
+
+## Other RL agents implemented for SC2:
+- [(peekalto) A2C (synchronous version of A3C), and PPO (Proximal Policy Optimization](https://github.com/pekaalto/sc2aibot)
+- [(vwxyzjn) An implementation of PPO using OpenAI Gym (with sc2gym) and Tensorfoce for a cleaner and more modular implementation](https://github.com/vwxyzjn/SC2AI)
 
 ## Multi-agent methods:
 
