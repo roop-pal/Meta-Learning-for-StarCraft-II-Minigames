@@ -17,6 +17,7 @@ from pysc2.lib import stopwatch
 import tensorflow as tf
 
 from run_loop import run_loop
+from pysc2.env import run_loop as pysc2_run_loop
 
 COUNTER = 0
 LOCK = threading.Lock()
@@ -46,8 +47,11 @@ flags.DEFINE_integer("max_agent_steps", 60, "Total agent steps.")
 
 flags.DEFINE_bool("profile", False, "Whether to turn on code profiling.")
 flags.DEFINE_bool("trace", False, "Whether to trace the code execution.")
-flags.DEFINE_integer("parallel", 16, "How many instances to run in parallel.")
+flags.DEFINE_integer("parallel", 1, "How many instances to run in parallel.")
 flags.DEFINE_bool("save_replay", False, "Whether to save a replay at the end.")
+
+# original flag not included by xhujoy but useful:
+flags.DEFINE_integer("game_steps_per_episode", 0, "Game steps per episode.")
 
 FLAGS(sys.argv)
 if FLAGS.training:
@@ -65,6 +69,25 @@ if not os.path.exists(LOG):
   os.makedirs(LOG)
 if not os.path.exists(SNAPSHOT):
   os.makedirs(SNAPSHOT)
+
+
+def pysc2_run_thread(agent_cls, map_name, visualize):
+  """Original version of run_thread used for most agents, from pysc2.bin.agent"""
+  with sc2_env.SC2Env(
+      map_name=map_name,
+      agent_race=FLAGS.agent_race,
+      bot_race=FLAGS.bot_race,
+      difficulty=FLAGS.difficulty,
+      step_mul=FLAGS.step_mul,
+      game_steps_per_episode=FLAGS.game_steps_per_episode,
+      screen_size_px=(FLAGS.screen_resolution, FLAGS.screen_resolution),
+      minimap_size_px=(FLAGS.minimap_resolution, FLAGS.minimap_resolution),
+      visualize=visualize) as env:
+    env = available_actions_printer.AvailableActionsPrinter(env)
+    agent = agent_cls()
+    pysc2_run_loop.run_loop([agent], env, FLAGS.max_agent_steps)
+    if FLAGS.save_replay:
+      env.save_replay(agent_cls.__name__)
 
 
 def run_thread(agent, map_name, visualize):
@@ -117,41 +140,67 @@ def _main(unused_argv):
   agent_module, agent_name = FLAGS.agent.rsplit(".", 1)
   agent_cls = getattr(importlib.import_module(agent_module), agent_name)
 
-  agents = []
-  for i in range(PARALLEL):
-    agent = agent_cls(FLAGS.training, FLAGS.minimap_resolution, FLAGS.screen_resolution)
-    agent.build_model(i > 0, DEVICE[i % len(DEVICE)], FLAGS.net)
-    agents.append(agent)
+  if agent_name == "A3CAgent":
+    # for now, A3CAgent is the only agent that needs a custom main loop
+    agents = []
+    for i in range(PARALLEL):
+      agent = agent_cls(FLAGS.training, FLAGS.minimap_resolution, FLAGS.screen_resolution)
+      agent.build_model(i > 0, DEVICE[i % len(DEVICE)], FLAGS.net)
+      agents.append(agent)
 
-  config = tf.ConfigProto(allow_soft_placement=True)
-  config.gpu_options.allow_growth = True
-  sess = tf.Session(config=config)
+    config = tf.ConfigProto(allow_soft_placement=True)
+    config.gpu_options.allow_growth = True
+    sess = tf.Session(config=config)
 
-  summary_writer = tf.summary.FileWriter(LOG)
-  for i in range(PARALLEL):
-    agents[i].setup(sess, summary_writer)
+    summary_writer = tf.summary.FileWriter(LOG)
+    for i in range(PARALLEL):
+      agents[i].setup(sess, summary_writer)
 
-  agent.initialize()
-  if not FLAGS.training or FLAGS.continuation:
-    global COUNTER
-    COUNTER = agent.load_model(SNAPSHOT)
+    agent.initialize()
+    if not FLAGS.training or FLAGS.continuation:
+      global COUNTER
+      COUNTER = agent.load_model(SNAPSHOT)
 
-  # Run threads
-  threads = []
-  for i in range(PARALLEL - 1):
-    t = threading.Thread(target=run_thread, args=(agents[i], FLAGS.map, False))
-    threads.append(t)
-    t.daemon = True
-    t.start()
-    time.sleep(5)
+    # Run threads
+    threads = []
+    for i in range(PARALLEL - 1):
+      t = threading.Thread(target=run_thread, args=(agents[i], FLAGS.map, False))
+      threads.append(t)
+      t.daemon = True
+      t.start()
+      time.sleep(5)
 
-  run_thread(agents[-1], FLAGS.map, FLAGS.render)
+    run_thread(agents[-1], FLAGS.map, FLAGS.render)
 
-  for t in threads:
-    t.join()
+    for t in threads:
+      t.join()
 
-  if FLAGS.profile:
-    print(stopwatch.sw)
+    if FLAGS.profile:
+      print(stopwatch.sw)
+  
+  else:
+    # other agents just call the usual main loop from pysc2
+    stopwatch.sw.enabled = FLAGS.profile or FLAGS.trace
+    stopwatch.sw.trace = FLAGS.trace
+
+    maps.get(FLAGS.map)  # Assert the map exists.
+
+    agent_module, agent_name = FLAGS.agent.rsplit(".", 1)
+    agent_cls = getattr(importlib.import_module(agent_module), agent_name)
+
+    threads = []
+    for _ in range(FLAGS.parallel - 1):
+      t = threading.Thread(target=pysc2_run_thread, args=(agent_cls, FLAGS.map, False))
+      threads.append(t)
+      t.start()
+
+    pysc2_run_thread(agent_cls, FLAGS.map, FLAGS.render)
+
+    for t in threads:
+      t.join()
+
+    if FLAGS.profile:
+      print(stopwatch.sw)
 
 
 if __name__ == "__main__":
