@@ -61,7 +61,19 @@ We are currently training our agents on a google cloud instance with a 4 core CP
 
 ## Running agents
 
-**TODO** after we clean up the repo a little bit.
+To run an agent, instead of calling pysc2 directly as in the instructions from DeepMind, run the main.py script of our project, with the agent class passed as a flag. For example, to run the q table agent:
+
+```
+$ python -m main --agent=rl_agents.qtable_agent.QTableAgent --map=DefeatRoaches
+```
+
+If no agent is specified, the A3C agent is run by default.
+
+The A3C agent has additionnal flags, including *--training*. Indeed, it is posible to run an agent already trained. To do so, download the pretrained model from [here](https://drive.google.com/open?id=0B6TLO16TqWxpUjRsWWdsSEU3dFE), which was trained by [Xiaowei Hu](github.com/xjujoy) on three maps including DefeatRoaches, and unzip it in *./snapshot*. Then run:
+
+```
+$ python -m main --map=DefeatRoaches --training=False   
+```
 
 ## Notes
 
