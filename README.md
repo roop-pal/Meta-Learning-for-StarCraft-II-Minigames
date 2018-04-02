@@ -2,27 +2,6 @@
 
 We intend to develop various reinforcement learning methods for two SC2LE minigames involving battles between groups of agents. This project was developed for the course COMS 4995 Deep Learning taught by Prof. Iddo Drori at Columbia University, in Spring 2018. Our team is composed by Connor Hargus, Jerome Kafrouni and Roop Pal who have contributed equally.
 
-<div align="center">
-  <a href="https://www.youtube.com/watch?v=-fKUyT14G-8"
-     target="_blank">
-    <img src="http://img.youtube.com/vi/-fKUyT14G-8/0.jpg"
-         alt="DeepMind open source PySC2 toolset for Starcraft II"
-         width="240" height="180" border="10" />
-  </a>
-  <a href="https://www.youtube.com/watch?v=6L448yg0Sm0"
-     target="_blank">
-    <img src="http://img.youtube.com/vi/6L448yg0Sm0/0.jpg"
-         alt="StarCraft II 'mini games' for AI research"
-         width="240" height="180" border="10" />
-  </a>
-  <a href="https://www.youtube.com/watch?v=WEOzide5XFc"
-     target="_blank">
-    <img src="http://img.youtube.com/vi/WEOzide5XFc/0.jpg"
-         alt="Trained and untrained agents play StarCraft II 'mini-game'"
-         width="240" height="180" border="10" />
-  </a>
-</div>
-
 ## Intro
 
 Deep reinforcement learning has made significant strides in recent years, with results achieved in board games such as Go. However, there are a number of obstacles preventing such methods from being applied to more real-world situations. For instance, more realistic strategic situations often involve much larger spaces of possible states and actions, an environment state which is only partially observed, multiple agents to control, and a necessity for long-term strategies involving not hundreds but thousands or tens of thousands of steps. It has thus been suggested that creating learning algorithms which outperform humans in playing real-time strategy (RTS) video games would signal a more generalizable result about the ability of a computer to make decisions in the real world.
