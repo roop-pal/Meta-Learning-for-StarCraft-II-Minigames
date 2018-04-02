@@ -19,6 +19,8 @@ import tensorflow as tf
 from run_loop import run_loop
 from pysc2.env import run_loop as pysc2_run_loop
 
+import numpy as np
+
 COUNTER = 0
 LOCK = threading.Lock()
 FLAGS = flags.FLAGS
@@ -91,6 +93,7 @@ def pysc2_run_thread(agent_cls, map_name, visualize):
 
 
 def run_thread(agent, map_name, visualize):
+  scores = list()
   with sc2_env.SC2Env(
     map_name=map_name,
     agent_race=FLAGS.agent_race,
@@ -125,6 +128,8 @@ def run_thread(agent, map_name, visualize):
         obs = recorder[-1].observation
         score = obs["score_cumulative"][0]
         print('Your score is '+str(score)+'!')
+        scores.append(score)
+        print('(mean score: {}, max score: {})'.format(np.mean(scores), np.max(scores)))
     if FLAGS.save_replay:
       env.save_replay(agent.name)
 
