@@ -105,6 +105,8 @@ def run_thread(agent, map_name, visualize):
     visualize=visualize) as env:
     env = available_actions_printer.AvailableActionsPrinter(env)
 
+    init_time = time.time()
+
     # Only for a single player!
     replay_buffer = []
     for recorder, is_done in run_loop([agent], env, MAX_AGENT_STEPS):
@@ -124,6 +126,9 @@ def run_thread(agent, map_name, visualize):
             agent.save_model(SNAPSHOT, counter)
           if counter >= FLAGS.max_steps:
             break
+          if COUNTER % 100 == 0:
+            time_elapsed = round((time.time() - init_time) / 60, 2) # in minutes
+            print('Total time elapsed: {} minutes, Average time per episode: {}'.format(time_elapsed, round(time_elapsed/COUNTER, 2)))
       elif is_done:
         obs = recorder[-1].observation
         score = obs["score_cumulative"][0]
