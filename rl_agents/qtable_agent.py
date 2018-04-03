@@ -1,7 +1,7 @@
 # Note: This code draws on code from tutorials aimed at the Simple64 minigame at:
 # https://itnext.io/build-a-sparse-reward-pysc2-agent-a44e94ba5255
 
-# A baseline agent using a simply Q-learning table lookup which gets updated progressively
+# A baseline agent using a Q-learning table lookup which gets updated progressively
 # to better map states and actions to values. For simplicity in the action and
 # state space, we quantize the grid to 4 by 4
 
@@ -60,7 +60,7 @@ for mm_x in range(0, 64):
             smart_actions.append(ACTION_ATTACK_ALL + '_' + str(mm_x - 8) + '_' + str(mm_y - 8))
 
 
-# Code to manage a Q table mapping state-action pairs to predicted value
+# Classs managing the Q table mapping state-action pairs to predicted value
 class QLearningTable:
     def __init__(self, actions, learning_rate=0.01, reward_decay=0.9, e_greedy=0.9):
         self.actions = actions  # a list
@@ -95,7 +95,6 @@ class QLearningTable:
         q_predict = self.q_table.ix[s, a]
 
         # If this step is not final, update table using bootstrapped Q_table approximation
-        # (Note: in this game we have sparse rewards only coming at the end so r = 0)
         if s_ != 'terminal':
             q_target = r + self.gamma * self.q_table.ix[s_, :].max()
 
