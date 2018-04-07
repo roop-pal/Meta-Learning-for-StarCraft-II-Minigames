@@ -32,6 +32,7 @@ _UNIT_TYPE = features.SCREEN_FEATURES.unit_type.index
 _PLAYER_ID = features.SCREEN_FEATURES.player_id.index
 
 _PLAYER_SELF = 1
+_PLAYER_NEUTRAL = 3  # beacon/minerals
 _PLAYER_HOSTILE = 4
 _ARMY_SUPPLY = 5
 
@@ -124,6 +125,8 @@ class QTableAgent(base_agent.BaseAgent):
         self.previous_action = None
         self.previous_state = None
 
+        self.scores = []
+
         # Each of our moves requires 2 steps, keep track of which step we're on in move_number
         self.move_number = 0
 
@@ -154,12 +157,18 @@ class QTableAgent(base_agent.BaseAgent):
         if obs.last():
             reward = obs.reward
 
+            score = obs.observation['score_cumulative'][0]
+            self.scores.append(score)
+            print('Avg Score (prev. 500): ' + str(sum(self.scores[-500:])/min(len(self.scores), 500)))
+            print('Max score (prev. 500): ' + str(max(self.scores[-500:])))
+
             self.qlearn.learn(str(self.previous_state), self.previous_action, reward, 'terminal')
 
             self.qlearn.q_table.to_pickle(DATA_FILE + '.gz', 'gzip')
 
             self.previous_action = None
             self.previous_state = None
+            self.rewards = []
 
             self.move_number = 0
 
@@ -169,16 +178,22 @@ class QTableAgent(base_agent.BaseAgent):
 
         # First step trains from previous action, selects new action which performs select of one or all units
         if self.move_number == 0:
-            self.move_number += 1
+            self.move_number = 1
 
             # Quantize the current state to sixteen squares to reduce action space, also keep track of
             # the number of marines
             current_state = np.zeros(17)
             current_state[0] = obs.observation['player'][_ARMY_SUPPLY]
 
-            # Make array of "hot squares" indicating locations of enemy units
+            # Make array of "hot squares" indicating locations of enemy (or neutral) units/beacons/shards
             hot_squares = np.zeros(16)
             enemy_y, enemy_x = (obs.observation['minimap'][_PLAYER_RELATIVE] == _PLAYER_HOSTILE).nonzero()
+            neutral_y, neutral_x = (obs.observation['minimap'][_PLAYER_RELATIVE] == _PLAYER_NEUTRAL).nonzero()
+
+            enemy_y = np.concatenate((enemy_y, neutral_y))
+            enemy_x = np.concatenate((enemy_x, neutral_x))
+            # enemy_x += neutral_x
+
             for i in range(0, len(enemy_y)):
                 y = int(math.ceil((enemy_y[i] + 1) / 16))
                 x = int(math.ceil((enemy_x[i] + 1) / 16))
@@ -190,8 +205,10 @@ class QTableAgent(base_agent.BaseAgent):
 
             # print("Current state: ", current_state)
 
+            reward = obs.reward
+
             if self.previous_action is not None:
-                self.qlearn.learn(str(self.previous_state), self.previous_action, 0, str(current_state))
+                self.qlearn.learn(str(self.previous_state), self.previous_action, reward, str(current_state))
 
             rl_action = self.qlearn.choose_action(str(current_state))
 
