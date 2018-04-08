@@ -1,6 +1,6 @@
 # Deep-Reinforcement-Learning-for-StarCraft-II-Battles
 
-We intend to develop various reinforcement learning methods for two SC2LE minigames involving battles between groups of agents. This project was developed for the course COMS 4995 Deep Learning taught by Prof. Iddo Drori at Columbia University, in Spring 2018. Our team is composed by Connor Hargus, Jerome Kafrouni and Roop Pal who have contributed equally.
+We intend to develop various reinforcement learning methods for five SC2LE minigames involving moving units to target locations as well as battles between groups of agents. This project was developed for the course COMS 4995 Deep Learning taught by Prof. Iddo Drori at Columbia University, in Spring 2018. Our team is composed by Connor Hargus, Jerome Kafrouni and Roop Pal who have contributed equally.
 
 We started our project by partially reproducing the results obtained by DeepMind in their SC2LE publication, as shown by the table above. We wish to explore different paths with simple to more complex strategies to solve different mini-games using the pysc2 environment.
 
