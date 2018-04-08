@@ -126,6 +126,8 @@ class QTableAgent(base_agent.BaseAgent):
         self.previous_state = None
 
         self.scores = []
+        self.stepcount = 0
+        self.stepcounts = []
 
         # Each of our moves requires 2 steps, keep track of which step we're on in move_number
         self.move_number = 0
@@ -150,6 +152,8 @@ class QTableAgent(base_agent.BaseAgent):
     def step(self, obs):
         super(QTableAgent, self).step(obs)
 
+        self.stepcount += 1
+
         # Uncomment sleep to slow down simulation and observe what agents are doing
         # sleep(0.5)
 
@@ -162,6 +166,10 @@ class QTableAgent(base_agent.BaseAgent):
             print('Avg Score (prev. 500): ' + str(sum(self.scores[-500:])/min(len(self.scores), 500)))
             print('Max score (prev. 500): ' + str(max(self.scores[-500:])))
 
+            self.stepcounts.append(self.stepcount)
+            print('Game steps: ' + str(self.stepcount))
+            print('Average Game steps: ' + str(sum(self.stepcounts[-500:])/min(len(self.stepcounts), 500)))
+
             self.qlearn.learn(str(self.previous_state), self.previous_action, reward, 'terminal')
 
             self.qlearn.q_table.to_pickle(DATA_FILE + '.gz', 'gzip')
@@ -171,6 +179,7 @@ class QTableAgent(base_agent.BaseAgent):
             self.rewards = []
 
             self.move_number = 0
+            self.stepcount = 0
 
             return actions.FunctionCall(_NO_OP, [])
 

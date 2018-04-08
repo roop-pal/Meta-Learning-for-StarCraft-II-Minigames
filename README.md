@@ -1,14 +1,5 @@
 # Deep-Reinforcement-Learning-for-StarCraft-II-Battles
 
-| Agent                 | DefeatRoaches           | DefeatZerglingsAndBanelings | # lines of code |
-| ----------------------|:-----------------------:| :--------------------------:|----------------:|
-| Random Agent          | mean 1 (max 46)         |  mean 23 (max 118)          | < 5             |
-| Scripted Agent        | mean 97 (max 345)       |  mean ? (max ?)             | ~ 70            |
-| DeepMind Human Player | mean 41 (max 81)        |  mean 729 (max 757)         | -               |
-| Starcraft GrandMaster | mean 215 (max 363)      |  mean 727 (max 848)         | -               |
-| Simple Q-Learning     | mean 29 (max 96)        |  mean 68 (max 164)          | ~ 200           |
-| A3C with AtariNet     | mean 61 (max 297)       |  mean 72 (max 167)          | ~ 400           |
-
 We intend to develop various reinforcement learning methods for two SC2LE minigames involving battles between groups of agents. This project was developed for the course COMS 4995 Deep Learning taught by Prof. Iddo Drori at Columbia University, in Spring 2018. Our team is composed by Connor Hargus, Jerome Kafrouni and Roop Pal who have contributed equally.
 
 We started our project by partially reproducing the results obtained by DeepMind in their SC2LE publication, as shown by the table above. We wish to explore different paths with simple to more complex strategies to solve different mini-games using the pysc2 environment.
@@ -32,6 +23,17 @@ We then made a review of the current architectures used to solve these minigames
 Our goal is to test different strategies, more or less complex, and compare them. We will try different architectures, try to modify the action space representation to help RL agents learn efficiently on simple mini-games.
 
 ## Preliminary results
+
+Results for two most difficult minigames (see report for scores on other mingames):
+
+| Agent                 | DefeatRoaches           | DefeatZerglingsAndBanelings | # lines of code |
+| ----------------------|:-----------------------:| :--------------------------:|----------------:|
+| Random Agent          | mean 2 (max 36)         |  mean 21 (max 67)           | < 5             |
+| Scripted Agent        | mean 108 (max 304)      |  mean 41 (max 81)           | ~ 70            |
+| DeepMind Human Player | mean 41 (max 81)        |  mean 729 (max 757)         | N/A             |
+| Starcraft GrandMaster | mean 215 (max 363)      |  mean 727 (max 848)         | N/A             |
+| Simple Q-Learning     | mean 29 (max 96)        |  mean 68 (max 164)          | ~ 200           |
+| A3C with AtariNet     | mean 61 (max 297)       |  mean 72 (max 167)          | ~ 400           |
 
 We have successfully trained an A3C agent with AtariNet on 5 of the 7 minigames: MoveToBeacon, CollectMineralShards, FindAndDefeatZerglings, DefeatRoaches and DefeatZerglingsAndBanelings. We have also tried simpler approach: we wrote scripted bots to solve these games, and implemented a simple Q-Learning agent with simpler action and state spaces.
 
