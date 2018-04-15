@@ -23,8 +23,6 @@ class A3CAgent(object):
     assert msize == ssize
     self.msize = msize
     self.ssize = ssize
-    self.isize = len(actions.FUNCTIONS)
-    # temp, roop
     self.isize = 23
 
 
