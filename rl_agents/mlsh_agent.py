@@ -26,7 +26,7 @@ class MLSHAgent(object):
     self.isize = len(actions.FUNCTIONS)
     self.num_subpol = num_subpol
     self.subpol_frames = subpol_frames
-    self.subpol_choices = []
+    self.ep_subpol_choices = []
 
     self.steps_on_subpol = 0
     self.cur_subpol = 0
@@ -71,47 +71,42 @@ class MLSHAgent(object):
       self.non_spatial_action_selected = tf.placeholder(tf.float32, [None, len(actions.FUNCTIONS)], name='non_spatial_action_selected')
       self.value_target = tf.placeholder(tf.float32, [None], name='value_target')
 
-      self.train_ops = []
+      # Compute log probability
+      spatial_action_prob = tf.reduce_sum(self.spatial_actions[self.subpol_id] * self.spatial_action_selected, axis=1)
+      spatial_action_log_prob = tf.log(tf.clip_by_value(spatial_action_prob, 1e-10, 1.))
+      non_spatial_action_prob = tf.reduce_sum(self.non_spatial_actions[self.subpol_id] * self.non_spatial_action_selected, axis=1)
+      valid_non_spatial_action_prob = tf.reduce_sum(self.non_spatial_actions[self.subpol_id] * self.valid_non_spatial_action, axis=1)
+      valid_non_spatial_action_prob = tf.clip_by_value(valid_non_spatial_action_prob, 1e-10, 1.)
+      non_spatial_action_prob = non_spatial_action_prob / valid_non_spatial_action_prob
+      non_spatial_action_log_prob = tf.log(tf.clip_by_value(non_spatial_action_prob, 1e-10, 1.))
+      self.summary.append(tf.summary.histogram('spatial_action_prob_' + str(self.subpol_id), spatial_action_prob))
+      self.summary.append(tf.summary.histogram('non_spatial_action_prob_' + str(self.subpol_id), non_spatial_action_prob))
 
-      # Create loss functions for subpolicies
-      for pol_i in range(self.num_subpol):
+      # Compute losses, more details in https://arxiv.org/abs/1602.01783
+      # Policy loss and value loss
+      action_log_prob = self.valid_spatial_action * spatial_action_log_prob + non_spatial_action_log_prob
+      advantage = tf.stop_gradient(self.value_target - self.value)
+      policy_loss = - tf.reduce_mean(action_log_prob * advantage)
+      value_loss = - tf.reduce_mean(self.value * advantage)
+      self.summary.append(tf.summary.scalar('policy_loss', policy_loss))
+      self.summary.append(tf.summary.scalar('value_loss', value_loss))
 
-        # Compute log probability
-        spatial_action_prob = tf.reduce_sum(self.spatial_actions[pol_i] * self.spatial_action_selected, axis=1)
-        spatial_action_log_prob = tf.log(tf.clip_by_value(spatial_action_prob, 1e-10, 1.))
-        non_spatial_action_prob = tf.reduce_sum(self.non_spatial_actions[pol_i] * self.non_spatial_action_selected, axis=1)
-        valid_non_spatial_action_prob = tf.reduce_sum(self.non_spatial_actions[pol_i] * self.valid_non_spatial_action, axis=1)
-        valid_non_spatial_action_prob = tf.clip_by_value(valid_non_spatial_action_prob, 1e-10, 1.)
-        non_spatial_action_prob = non_spatial_action_prob / valid_non_spatial_action_prob
-        non_spatial_action_log_prob = tf.log(tf.clip_by_value(non_spatial_action_prob, 1e-10, 1.))
-        self.summary.append(tf.summary.histogram('spatial_action_prob_' + str(pol_i), spatial_action_prob))
-        self.summary.append(tf.summary.histogram('non_spatial_action_prob_' + str(pol_i), non_spatial_action_prob))
+      # TODO: policy penalty
+      loss = policy_loss + value_loss
 
-        # Compute losses, more details in https://arxiv.org/abs/1602.01783
-        # Policy loss and value loss
-        action_log_prob = self.valid_spatial_action * spatial_action_log_prob + non_spatial_action_log_prob
-        advantage = tf.stop_gradient(self.value_target - self.value)
-        policy_loss = - tf.reduce_mean(action_log_prob * advantage)
-        value_loss = - tf.reduce_mean(self.value * advantage)
-        self.summary.append(tf.summary.scalar('policy_loss', policy_loss))
-        self.summary.append(tf.summary.scalar('value_loss', value_loss))
+      # Build the optimizer
+      self.learning_rate = tf.placeholder(tf.float32, None, name='learning_rate')
+      opt = tf.train.RMSPropOptimizer(self.learning_rate, decay=0.99, epsilon=1e-10)
+      grads = opt.compute_gradients(loss)
+      cliped_grad = []
+      for grad, var in grads:
+        self.summary.append(tf.summary.histogram(var.op.name, var))
+        self.summary.append(tf.summary.histogram(var.op.name+'/grad', grad))
+        grad = tf.clip_by_norm(grad, 10.0)
+        cliped_grad.append([grad, var])
 
-        # TODO: policy penalty
-        loss = policy_loss + value_loss
-
-        # Build the optimizer
-        self.learning_rate = tf.placeholder(tf.float32, None, name='learning_rate')
-        opt = tf.train.RMSPropOptimizer(self.learning_rate, decay=0.99, epsilon=1e-10)
-        grads = opt.compute_gradients(loss)
-        cliped_grad = []
-        for grad, var in grads:
-          self.summary.append(tf.summary.histogram(var.op.name, var))
-          self.summary.append(tf.summary.histogram(var.op.name+'/grad', grad))
-          grad = tf.clip_by_norm(grad, 10.0)
-          cliped_grad.append([grad, var])
-
-        self.train_ops.append(opt.apply_gradients(cliped_grad))
-        self.summary_op = tf.summary.merge(self.summary)
+      self.subpol_train_op = opt.apply_gradients(cliped_grad)
+      self.summary_op = tf.summary.merge(self.summary)
 
       self.saver = tf.train.Saver(max_to_keep=100, keep_checkpoint_every_n_hours=1)
 
@@ -148,7 +143,7 @@ class MLSHAgent(object):
     self.steps_on_subpol += 1
 
     # Store subpol_choice at each step for later call to update()
-    self.subpol_choices.append(self.cur_subpol)
+    self.ep_subpol_choices.append(self.cur_subpol)
 
     # Run the graph for the current subpolicy to get action
     feed = {self.minimap: minimap,
@@ -220,6 +215,8 @@ class MLSHAgent(object):
     non_spatial_action_selected = np.zeros([len(rbs), len(actions.FUNCTIONS)], dtype=np.float32)
 
     rbs.reverse()
+    self.ep_subpol_choices.reverse()
+
     for i, [obs, action, next_obs] in enumerate(rbs):
       minimap = np.array(obs.observation['minimap'], dtype=np.float32)
       minimap = np.expand_dims(U.preprocess_minimap(minimap), axis=0)
@@ -262,9 +259,12 @@ class MLSHAgent(object):
             self.spatial_action_selected: spatial_action_selected,
             self.valid_non_spatial_action: valid_non_spatial_action,
             self.non_spatial_action_selected: non_spatial_action_selected,
-            self.learning_rate: lr}
-    _, summary = self.sess.run([self.train_ops, self.summary_op], feed_dict=feed)
+            self.learning_rate: lr,
+            self.subpol_id: self.ep_subpol_choices}
+    _, summary = self.sess.run([self.subpol_train_op, self.summary_op], feed_dict=feed)
     self.summary_writer.add_summary(summary, cter)
+
+    self.ep_subpol_choices = []
 
 
   def save_model(self, path, count):
