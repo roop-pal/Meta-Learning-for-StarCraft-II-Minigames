@@ -57,13 +57,14 @@ class MLSHAgent(object):
       self.screen = tf.placeholder(tf.float32, [None, U.screen_channel(), self.ssize, self.ssize], name='screen')
       self.info = tf.placeholder(tf.float32, [None, self.isize], name='info')
 
-      # Add policy input to choose policy to follow
-      self.subpol_id = tf.placeholder(tf.float32, [None, 1])
-
       # Build networks
-      net = build_net(self.minimap, self.screen, self.info, self.msize, self.ssize, len(actions.FUNCTIONS), ntype)
+      net = build_net(self.minimap, self.screen, self.info, self.msize, self.ssize, len(actions.FUNCTIONS), ntype, self.num_subpol)
       self.spatial_actions, self.non_spatial_actions, self.value, self.subpol_choice = net
 
+      print(self.value)
+      print(self.spatial_actions)
+
+      # Create training operation for the subpolicies:
       # Set targets and masks
       self.valid_spatial_action = tf.placeholder(tf.float32, [None], name='valid_spatial_action')
       self.spatial_action_selected = tf.placeholder(tf.float32, [None, self.ssize**2], name='spatial_action_selected')
@@ -71,42 +72,56 @@ class MLSHAgent(object):
       self.non_spatial_action_selected = tf.placeholder(tf.float32, [None, len(actions.FUNCTIONS)], name='non_spatial_action_selected')
       self.value_target = tf.placeholder(tf.float32, [None], name='value_target')
 
-      # Compute log probability
-      spatial_action_prob = tf.reduce_sum(self.spatial_actions[self.subpol_id] * self.spatial_action_selected, axis=1)
-      spatial_action_log_prob = tf.log(tf.clip_by_value(spatial_action_prob, 1e-10, 1.))
-      non_spatial_action_prob = tf.reduce_sum(self.non_spatial_actions[self.subpol_id] * self.non_spatial_action_selected, axis=1)
-      valid_non_spatial_action_prob = tf.reduce_sum(self.non_spatial_actions[self.subpol_id] * self.valid_non_spatial_action, axis=1)
-      valid_non_spatial_action_prob = tf.clip_by_value(valid_non_spatial_action_prob, 1e-10, 1.)
-      non_spatial_action_prob = non_spatial_action_prob / valid_non_spatial_action_prob
-      non_spatial_action_log_prob = tf.log(tf.clip_by_value(non_spatial_action_prob, 1e-10, 1.))
-      self.summary.append(tf.summary.histogram('spatial_action_prob_' + str(self.subpol_id), spatial_action_prob))
-      self.summary.append(tf.summary.histogram('non_spatial_action_prob_' + str(self.subpol_id), non_spatial_action_prob))
-
-      # Compute losses, more details in https://arxiv.org/abs/1602.01783
-      # Policy loss and value loss
-      action_log_prob = self.valid_spatial_action * spatial_action_log_prob + non_spatial_action_log_prob
-      advantage = tf.stop_gradient(self.value_target - self.value)
-      policy_loss = - tf.reduce_mean(action_log_prob * advantage)
-      value_loss = - tf.reduce_mean(self.value * advantage)
-      self.summary.append(tf.summary.scalar('policy_loss', policy_loss))
-      self.summary.append(tf.summary.scalar('value_loss', value_loss))
-
-      # TODO: policy penalty
-      loss = policy_loss + value_loss
+      self.subpol_train_ops = []
 
       # Build the optimizer
       self.learning_rate = tf.placeholder(tf.float32, None, name='learning_rate')
       opt = tf.train.RMSPropOptimizer(self.learning_rate, decay=0.99, epsilon=1e-10)
-      grads = opt.compute_gradients(loss)
-      cliped_grad = []
-      for grad, var in grads:
-        self.summary.append(tf.summary.histogram(var.op.name, var))
-        self.summary.append(tf.summary.histogram(var.op.name+'/grad', grad))
-        grad = tf.clip_by_norm(grad, 10.0)
-        cliped_grad.append([grad, var])
 
-      self.subpol_train_op = opt.apply_gradients(cliped_grad)
-      self.summary_op = tf.summary.merge(self.summary)
+      for pol_id in range(self.num_subpol):
+        # Compute log probability
+
+        self.spatial_action = self.spatial_actions[pol_id]
+        self.non_spatial_action = self.non_spatial_actions[pol_id]
+
+        spatial_action_prob = tf.reduce_sum(self.spatial_action * self.spatial_action_selected, axis=1)
+        spatial_action_log_prob = tf.log(tf.clip_by_value(spatial_action_prob, 1e-10, 1.))
+        non_spatial_action_prob = tf.reduce_sum(self.non_spatial_action * self.non_spatial_action_selected, axis=1)
+        valid_non_spatial_action_prob = tf.reduce_sum(self.non_spatial_action * self.valid_non_spatial_action, axis=1)
+        valid_non_spatial_action_prob = tf.clip_by_value(valid_non_spatial_action_prob, 1e-10, 1.)
+        non_spatial_action_prob = non_spatial_action_prob / valid_non_spatial_action_prob
+        non_spatial_action_log_prob = tf.log(tf.clip_by_value(non_spatial_action_prob, 1e-10, 1.))
+        self.summary.append(tf.summary.histogram('spatial_action_prob_' + str(pol_id), spatial_action_prob))
+        self.summary.append(tf.summary.histogram('non_spatial_action_prob_' + str(pol_id), non_spatial_action_prob))
+
+        # Compute losses, more details in https://arxiv.org/abs/1602.01783
+        # Policy loss and value loss
+        action_log_prob = self.valid_spatial_action * spatial_action_log_prob + non_spatial_action_log_prob
+        advantage = tf.stop_gradient(self.value_target - self.value)
+        policy_loss = - tf.reduce_mean(action_log_prob * advantage)
+        value_loss = - tf.reduce_mean(self.value * advantage)
+        self.summary.append(tf.summary.scalar('policy_loss', policy_loss))
+        self.summary.append(tf.summary.scalar('value_loss', value_loss))
+
+        # TODO: policy penalty
+        loss = policy_loss + value_loss
+
+        grads = opt.compute_gradients(loss)
+
+        cliped_grad = []
+        for grad, var in grads:
+
+          print(grad)
+          # Ignore gradients for other output layers for other subpolicies
+          if grad == None:
+            continue
+          self.summary.append(tf.summary.histogram(var.op.name, var))
+          self.summary.append(tf.summary.histogram(var.op.name+'/grad', grad))
+          grad = tf.clip_by_norm(grad, 10.0)
+          cliped_grad.append([grad, var])
+
+        self.subpol_train_ops.append(opt.apply_gradients(cliped_grad))
+        self.summary_op = tf.summary.merge(self.summary)
 
       self.saver = tf.train.Saver(max_to_keep=100, keep_checkpoint_every_n_hours=1)
 
@@ -115,6 +130,7 @@ class MLSHAgent(object):
 
     minimap = np.array(obs.observation['minimap'], dtype=np.float32)
     minimap = np.expand_dims(U.preprocess_minimap(minimap), axis=0)
+
     screen = np.array(obs.observation['screen'], dtype=np.float32)
     screen = np.expand_dims(U.preprocess_screen(screen), axis=0)
     # TODO: only use available actions
@@ -129,16 +145,19 @@ class MLSHAgent(object):
               self.screen: screen,
               self.info: info}
       subpol_choice = self.sess.run(
-        [self.subpol_choice],
+        self.subpol_choice,
         feed_dict=feed)
 
+
       # Choose max probability output for subpolicy
-      self.cur_subpol = np.argmax(subpol_choice.ravel())
+      self.cur_subpol = np.argmax(subpol_choice)
       self.steps_on_subpol = 0
 
       # Choose subpolicy using epsilon-greedy method
-      if self.training and np.random.rand() < self.epsilon[0]:
+      if self.training and np.random.rand() < self.epsilon[1]:
         self.cur_subpol = np.random.randint(0, self.num_subpol)
+
+      print('SUBPOLICY CHOICE: ' + str(subpol_choice))
 
     self.steps_on_subpol += 1
 
@@ -147,8 +166,8 @@ class MLSHAgent(object):
 
     # Run the graph for the current subpolicy to get action
     feed = {self.minimap: minimap,
-                self.screen: screen,
-                self.info: info}
+            self.screen: screen,
+            self.info: info}
     non_spatial_action, spatial_action = self.sess.run(
       [self.non_spatial_actions[self.cur_subpol], self.spatial_actions[self.cur_subpol]],
       feed_dict=feed)
@@ -160,6 +179,8 @@ class MLSHAgent(object):
     act_id = valid_actions[np.argmax(non_spatial_action[valid_actions])]
     target = np.argmax(spatial_action)
     target = [int(target // self.ssize), int(target % self.ssize)]
+
+    # print('Taking action with ID: ' + str(act_id))
 
     if False:
       print(actions.FUNCTIONS[act_id].name, target)
@@ -184,6 +205,7 @@ class MLSHAgent(object):
 
 
   def update(self, rbs, disc, lr, cter):
+
     # Compute R, which is value of the last observation
     obs = rbs[-1][-1]
     if obs.last():
@@ -218,6 +240,7 @@ class MLSHAgent(object):
     self.ep_subpol_choices.reverse()
 
     for i, [obs, action, next_obs] in enumerate(rbs):
+
       minimap = np.array(obs.observation['minimap'], dtype=np.float32)
       minimap = np.expand_dims(U.preprocess_minimap(minimap), axis=0)
       screen = np.array(obs.observation['screen'], dtype=np.float32)
@@ -250,19 +273,31 @@ class MLSHAgent(object):
     screens = np.concatenate(screens, axis=0)
     infos = np.concatenate(infos, axis=0)
 
-    # Train
-    feed = {self.minimap: minimaps,
-            self.screen: screens,
-            self.info: infos,
-            self.value_target: value_target,
-            self.valid_spatial_action: valid_spatial_action,
-            self.spatial_action_selected: spatial_action_selected,
-            self.valid_non_spatial_action: valid_non_spatial_action,
-            self.non_spatial_action_selected: non_spatial_action_selected,
-            self.learning_rate: lr,
-            self.subpol_id: self.ep_subpol_choices}
-    _, summary = self.sess.run([self.subpol_train_op, self.summary_op], feed_dict=feed)
-    self.summary_writer.add_summary(summary, cter)
+    # Update each subpolicy using gradient descent on the steps of this episode for which that
+    # subpolicy was being used
+    for pol_id in range(self.num_subpol):
+
+      # print('UPDATING SUBPOLICY: ' + str(pol_id) + '\n\n')
+
+      pol_inds = np.where(np.array(self.ep_subpol_choices) == pol_id)[0]
+      # print('Step indices for policy: ' + str(pol_inds) + '\n')
+
+      # No game steps in this episode used this policy
+      if len(pol_inds) == 0:
+        continue
+
+      # Train
+      feed = {self.minimap: minimaps[pol_inds],
+              self.screen: screens[pol_inds],
+              self.info: infos[pol_inds],
+              self.value_target: value_target[pol_inds],
+              self.valid_spatial_action: valid_spatial_action[pol_inds],
+              self.spatial_action_selected: spatial_action_selected[pol_inds],
+              self.valid_non_spatial_action: valid_non_spatial_action[pol_inds],
+              self.non_spatial_action_selected: non_spatial_action_selected[pol_inds],
+              self.learning_rate: lr}
+      _ = self.sess.run(self.subpol_train_ops[pol_id], feed_dict=feed)
+      # self.summary_writer.add_summary(summary, cter)
 
     self.ep_subpol_choices = []
 

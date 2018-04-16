@@ -54,7 +54,7 @@ flags.DEFINE_bool("save_replay", False, "Whether to save a replay at the end.")
 
 # Useful to choose number of subpolicies selected from by MLSH master controller
 flags.DEFINE_integer("num_subpol", 2, "Number of subpolicies used for MLSH.")
-flags.DEFINE_integer("subpol_frames", 200, "Number of subpolicies used for MLSH.")
+flags.DEFINE_integer("subpol_frames", 5, "Number of subpolicies used for MLSH.")
 # original flag not included by xhujoy but useful:
 flags.DEFINE_integer("game_steps_per_episode", 0, "Game steps per episode.")
 
