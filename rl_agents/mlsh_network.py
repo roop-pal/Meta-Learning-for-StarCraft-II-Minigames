@@ -6,9 +6,9 @@ import tensorflow as tf
 import tensorflow.contrib.layers as layers
 
 
-def build_net(minimap, screen, info, msize, ssize, num_action, ntype):
+def build_net(minimap, screen, info, msize, ssize, num_action, ntype, num_subpol):
   if ntype == 'atari':
-    return build_atari(minimap, screen, info, msize, ssize, num_action)
+    return build_atari(minimap, screen, info, msize, ssize, num_action, num_subpol)
   elif ntype == 'fcn':
     return build_fcn(minimap, screen, info, msize, ssize, num_action)
   else:
@@ -58,11 +58,12 @@ def build_atari(minimap, screen, info, msize, ssize, num_action, num_subpol):
   spatial_actions = []
   non_spatial_actions = []
 
-  for pol_i in range(num_subpol):
+  # Create separate action output layers for each subpolicy
+  for pol_i in range(1, num_subpol + 1):
       spatial_action_x = layers.fully_connected(feat_fc,
                                                 num_outputs=ssize,
                                                 activation_fn=tf.nn.softmax,
-                                                scope='spatial_action_x_' + str(pol_i))
+                                                scope=('spatial_action_x_' + str(pol_i)))
       spatial_action_y = layers.fully_connected(feat_fc,
                                                 num_outputs=ssize,
                                                 activation_fn=tf.nn.softmax,
@@ -76,7 +77,7 @@ def build_atari(minimap, screen, info, msize, ssize, num_action, num_subpol):
       non_spatial_action = layers.fully_connected(feat_fc,
                                                   num_outputs=num_action,
                                                   activation_fn=tf.nn.softmax,
-                                                  scope='non_spatial_action_' + str(pol_i))
+                                                  scope=('non_spatial_action_' + str(pol_i)))
 
       spatial_actions.append(spatial_action)
       non_spatial_actions.append(non_spatial_action)
