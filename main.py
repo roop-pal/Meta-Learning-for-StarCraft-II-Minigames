@@ -52,6 +52,9 @@ flags.DEFINE_bool("trace", False, "Whether to trace the code execution.")
 flags.DEFINE_integer("parallel", 1, "How many instances to run in parallel.")
 flags.DEFINE_bool("save_replay", False, "Whether to save a replay at the end.")
 
+# Useful to choose number of subpolicies selected from by MLSH master controller
+flags.DEFINE_integer("num_subpol", 2, "Number of subpolicies used for MLSH.")
+flags.DEFINE_integer("subpol_frames", 5, "Number of subpolicies used for MLSH.")
 # original flag not included by xhujoy but useful:
 flags.DEFINE_integer("game_steps_per_episode", 0, "Game steps per episode.")
 
@@ -151,11 +154,15 @@ def _main(unused_argv):
   agent_module, agent_name = FLAGS.agent.rsplit(".", 1)
   agent_cls = getattr(importlib.import_module(agent_module), agent_name)
 
-  if agent_name == "A3CAgent":
+  if agent_name == "A3CAgent" or agent_name == "MLSHAgent":
     # for now, A3CAgent is the only agent that needs a custom main loop
     agents = []
     for i in range(PARALLEL):
-      agent = agent_cls(FLAGS.training, FLAGS.minimap_resolution, FLAGS.screen_resolution)
+      if agent_name == "A3CAgent":
+        agent = agent_cls(FLAGS.training, FLAGS.minimap_resolution, FLAGS.screen_resolution)
+      else:  # i.e. MLSHAgent
+        agent = agent_cls(FLAGS.training, FLAGS.minimap_resolution, FLAGS.screen_resolution, FLAGS.num_subpol, FLAGS.subpol_frames)
+
       agent.build_model(i > 0, DEVICE[i % len(DEVICE)], FLAGS.net)
       agents.append(agent)
 
