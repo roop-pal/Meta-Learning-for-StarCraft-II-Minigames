@@ -198,14 +198,6 @@ def _main(unused_argv):
   
   else:
     # other agents just call the usual main loop from pysc2
-    stopwatch.sw.enabled = FLAGS.profile or FLAGS.trace
-    stopwatch.sw.trace = FLAGS.trace
-
-    maps.get(FLAGS.map)  # Assert the map exists.
-
-    agent_module, agent_name = FLAGS.agent.rsplit(".", 1)
-    agent_cls = getattr(importlib.import_module(agent_module), agent_name)
-
     threads = []
     for _ in range(FLAGS.parallel - 1):
       t = threading.Thread(target=pysc2_run_thread, args=(agent_cls, FLAGS.map, False))
