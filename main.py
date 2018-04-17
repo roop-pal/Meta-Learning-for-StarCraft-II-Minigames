@@ -129,12 +129,13 @@ def run_thread(agent, map_name, visualize):
           if COUNTER % 100 == 0:
             time_elapsed = round((time.time() - init_time) / 60, 2) # in minutes
             print('Total time elapsed: {} minutes, Average time per episode: {}'.format(time_elapsed, round(time_elapsed/COUNTER, 2)))
-      elif is_done:
-        obs = recorder[-1].observation
-        score = obs["score_cumulative"][0]
-        print('Your score is '+str(score)+'!')
-        scores.append(score)
-        print('(mean score: {}, max score: {})'.format(np.mean(scores), np.max(scores)))
+    #  elif is_done:
+          obs = recorder[-1].observation
+          score = obs["score_cumulative"][0]
+          print('Your score is '+str(score)+'!')
+          scores.append(score)
+          print('(mean score: {}, max score: {})'.format(np.mean(scores[:-300]), np.max(scores)))
+
     if FLAGS.save_replay:
       env.save_replay(agent.name)
 
