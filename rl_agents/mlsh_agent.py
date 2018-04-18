@@ -123,6 +123,8 @@ class MLSHAgent(object):
         self.subpol_train_ops.append(opt.apply_gradients(cliped_grad))
         self.summary_op = tf.summary.merge(self.summary)
 
+      # Create training operation for the master policy:
+
       self.saver = tf.train.Saver(max_to_keep=100, keep_checkpoint_every_n_hours=1)
 
 
@@ -205,7 +207,7 @@ class MLSHAgent(object):
 
 
   def update(self, rbs, disc, lr, cter):
-
+    master_disc = disc # TODO: pass this as argument instead ? and tune the discount ?
     # Compute R, which is value of the last observation
     obs = rbs[-1][-1]
     if obs.last():
@@ -239,6 +241,7 @@ class MLSHAgent(object):
     rbs.reverse()
     self.ep_subpol_choices.reverse()
 
+    # process the observations from the replay to use them for the update:
     for i, [obs, action, next_obs] in enumerate(rbs):
 
       minimap = np.array(obs.observation['minimap'], dtype=np.float32)
@@ -298,6 +301,44 @@ class MLSHAgent(object):
               self.learning_rate: lr}
       _ = self.sess.run(self.subpol_train_ops[pol_id], feed_dict=feed)
       # self.summary_writer.add_summary(summary, cter)
+
+    # Update the master policy
+
+    # TODO:
+    # master policy takes decisions every N steps so it should:
+    # sum up rewards over N steps
+    # compute advantage
+    # update
+    # note there is something to figure out with learning rate
+
+    # get decisions made by master policy every self.subpol_frames steps:
+    master_choices = [v for i,v in enumerate(self.ep_subpol_choices) if i % self.subpol_frames == 0]
+    
+    # sum rewards gotten between each change of subpolicy and compute values:
+    assert len(rbs) % self.subpol_frames == 0 # TODO: deal with weird cases
+    master_value_target = np.zeros([int(len(rbs) / self.subpol_frames)], dtype=np.float32)
+    master_value_target[-1] = R
+
+    for i in range(int(len(rbs) / self.subpol_frames)):
+      sum_rewards = sum([obs.reward for obs,_,_ in rbs[i:(i+self.subpol_frames)]])
+      master_value_target[i] = reward + master_disc * master_value_target[i-1]
+
+    master_choice_inds = list(range(0, len(rbs), self.subpol_frames))
+
+    feed = {self.minimap: minimaps[master_choice_inds],
+            self.screen: screens[master_choice_inds],
+            self.info: infos[master_choice_inds],
+            self.value_target: value_target[master_choice_inds],
+            self.valid_spatial_action: valid_spatial_action[master_choice_inds],
+            self.spatial_action_selected: spatial_action_selected[master_choice_inds],
+            self.valid_non_spatial_action: valid_non_spatial_action[master_choice_inds],
+            self.non_spatial_action_selected: non_spatial_action_selected[master_choice_inds],
+            self.learning_rate: lr}
+    _ = self.sess.run(self.master_train_op, feed_dict=feed)
+
+    # re-initialize master policy:
+
+    # TODO !
 
     self.ep_subpol_choices = []
 

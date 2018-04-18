@@ -110,12 +110,12 @@ def run_thread(agent, map_name, visualize):
 
     init_time = time.time()
 
-    # Only for a single player!
-    replay_buffer = []
+    replay_buffer = [] # will get observations of each step during an episode to learn once episode is done
     for recorder, is_done in run_loop([agent], env, MAX_AGENT_STEPS):
       if FLAGS.training:
         replay_buffer.append(recorder)
         if is_done:
+          # end of an episode, agent has interacted with env and now we learn from the "replay"
           counter = 0
           with LOCK:
             global COUNTER
@@ -155,7 +155,7 @@ def _main(unused_argv):
   agent_cls = getattr(importlib.import_module(agent_module), agent_name)
 
   if agent_name == "A3CAgent" or agent_name == "MLSHAgent":
-    # for now, A3CAgent is the only agent that needs a custom main loop
+    # these agents cannot be initiated similarly to classic agents
     agents = []
     for i in range(PARALLEL):
       if agent_name == "A3CAgent":
