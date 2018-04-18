@@ -59,7 +59,7 @@ class MLSHAgent(object):
 
       # Build networks
       net = build_net(self.minimap, self.screen, self.info, self.msize, self.ssize, len(actions.FUNCTIONS), ntype, self.num_subpol)
-      self.spatial_actions, self.non_spatial_actions, self.value, self.subpol_choice = net
+      self.spatial_actions, self.non_spatial_actions, self.value, self.master_value, self.subpol_choice = net
 
       print(self.value)
       print(self.spatial_actions)
@@ -124,6 +124,37 @@ class MLSHAgent(object):
         self.summary_op = tf.summary.merge(self.summary)
 
       # Create training operation for the master policy:
+      # Create targets and masks:
+      self.master_choices = tf.placeholder(tf.float32, [None], name='master_choices')
+      self.subpolicy_selected = tf.placeholder(tf.float32, [None, self.num_subpol], name='subpolicy_selected')
+
+      advantage = tf.stop_gradient(self.value_target - self.master_value)
+      # value_target is here master_value_target actually
+      subpol_choice_prob = tf.reduce_sum(self.subpol_choice * self.subpolicy_selected, axis=1)
+      subpol_choice_log_prob = tf.log(tf.clip_by_value(subpol_choice_prob, 1e-10, 1.))
+      master_policy_loss = - tf.reduce_mean(subpol_choice_log_prob * advantage)
+      master_value_loss = - tf.reduce_mean(self.master_value * advantage)
+
+      self.summary.append(tf.summary.scalar('master_policy_loss', master_policy_loss))
+      self.summary.append(tf.summary.scalar('master_value_loss', master_value_loss))
+
+      master_loss = master_policy_loss + master_value_loss
+
+      grads = opt.compute_gradients(master_loss)
+
+      cliped_grad = []
+      for grad, var in grads:
+        # assert grad != None
+        if grad is None:
+          print('problem with grad: ', var)
+          continue
+        self.summary.append(tf.summary.histogram(var.op.name, var))
+        self.summary.append(tf.summary.histogram(var.op.name+'/grad', grad))
+        grad = tf.clip_by_norm(grad, 10.0)
+        cliped_grad.append([grad, var])
+
+        self.master_train_op = opt.apply_gradients(cliped_grad)
+        # self.summary_op = tf.summary.merge(self.summary)
 
       self.saver = tf.train.Saver(max_to_keep=100, keep_checkpoint_every_n_hours=1)
 
@@ -211,7 +242,7 @@ class MLSHAgent(object):
     # Compute R, which is value of the last observation
     obs = rbs[-1][-1]
     if obs.last():
-      R = 0
+      R, R_master = 0, 0
     else:
       minimap = np.array(obs.observation['minimap'], dtype=np.float32)
       minimap = np.expand_dims(U.preprocess_minimap(minimap), axis=0)
@@ -223,7 +254,7 @@ class MLSHAgent(object):
       feed = {self.minimap: minimap,
               self.screen: screen,
               self.info: info}
-      R = self.sess.run(self.value, feed_dict=feed)[0]
+      R, R_master = self.sess.run([self.value, self.master_value], feed_dict=feed)
 
     # Compute targets and masks
     minimaps = []
@@ -312,12 +343,16 @@ class MLSHAgent(object):
     # note there is something to figure out with learning rate
 
     # get decisions made by master policy every self.subpol_frames steps:
-    master_choices = [v for i,v in enumerate(self.ep_subpol_choices) if i % self.subpol_frames == 0]
-    
+    # master_choices = [v for i,v in enumerate(self.ep_subpol_choices) if i % self.subpol_frames == 0]
+    subpolicy_selected = np.zeros([int(len(rbs) / self.subpol_frames), self.num_subpol])
+    for i, policy_index in enumerate(self.ep_subpol_choices):
+      if i % self.subpol_frames == 0:
+        subpolicy_selected[int(i/self.subpol_frames), policy_index] = 1
+
     # sum rewards gotten between each change of subpolicy and compute values:
     assert len(rbs) % self.subpol_frames == 0 # TODO: deal with weird cases
     master_value_target = np.zeros([int(len(rbs) / self.subpol_frames)], dtype=np.float32)
-    master_value_target[-1] = R
+    master_value_target[-1] = R_master
 
     for i in range(int(len(rbs) / self.subpol_frames)):
       sum_rewards = sum([obs.reward for obs,_,_ in rbs[i:(i+self.subpol_frames)]])
@@ -328,12 +363,9 @@ class MLSHAgent(object):
     feed = {self.minimap: minimaps[master_choice_inds],
             self.screen: screens[master_choice_inds],
             self.info: infos[master_choice_inds],
-            self.value_target: value_target[master_choice_inds],
-            self.valid_spatial_action: valid_spatial_action[master_choice_inds],
-            self.spatial_action_selected: spatial_action_selected[master_choice_inds],
-            self.valid_non_spatial_action: valid_non_spatial_action[master_choice_inds],
-            self.non_spatial_action_selected: non_spatial_action_selected[master_choice_inds],
-            self.learning_rate: lr}
+            self.value_target: master_value_target,
+            self.learning_rate: lr,
+            self.subpolicy_selected: subpolicy_selected}
     _ = self.sess.run(self.master_train_op, feed_dict=feed)
 
     # re-initialize master policy:

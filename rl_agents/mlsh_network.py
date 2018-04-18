@@ -87,7 +87,12 @@ def build_atari(minimap, screen, info, msize, ssize, num_action, num_subpol):
                                             activation_fn=None,
                                             scope='value'), [-1])
 
-  return spatial_actions, non_spatial_actions, value, subpol_choice
+  master_value = tf.reshape(layers.fully_connected(feat_fc,
+                                            num_outputs=1,
+                                            activation_fn=None,
+                                            scope='master_value'), [-1])
+
+  return spatial_actions, non_spatial_actions, value, master_value, subpol_choice
 
 
 def build_fcn(minimap, screen, info, msize, ssize, num_action):
