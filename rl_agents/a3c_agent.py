@@ -24,6 +24,8 @@ class A3CAgent(object):
     self.msize = msize
     self.ssize = ssize
     self.isize = 23
+    self.count_steps = 0
+    self.test_scores = []
 
 
   def setup(self, sess, summary_writer):
@@ -103,6 +105,7 @@ class A3CAgent(object):
 
 
   def step(self, obs):
+
     minimap = np.array(obs.observation['minimap'], dtype=np.float32)
     minimap = np.expand_dims(U.preprocess_minimap(minimap), axis=0)
     screen = np.array(obs.observation['screen'], dtype=np.float32)
@@ -160,7 +163,18 @@ class A3CAgent(object):
 
   def update(self, rbs, disc, lr, cter):
     # Compute R, which is value of the last observation
+
     obs = rbs[-1][-1]
+
+    # Print out score on a test run through a full episode, don't update network on test run
+    if not self.training and obs.last():
+      self.test_scores.append(obs.observation['score_cumulative'][0])
+      print("TEST SCORE: " + str(self.test_scores[-1]))
+      return
+
+    print("Total game steps: " + str(self.count_steps))
+    self.count_steps += len(rbs)
+
     if obs.last():
       R = 0
     else:
