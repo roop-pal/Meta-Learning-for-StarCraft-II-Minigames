@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import os
 import numpy as np
+import math
 import tensorflow as tf
 from pysc2.lib import actions
 from pysc2.lib import features
@@ -146,7 +147,7 @@ class MLSHAgent(object):
       for grad, var in grads:
         # assert grad != None
         if grad is None:
-          print('problem with grad: ', var)
+          # compute_gradients computes grads for some variables not needed / related
           continue
         self.summary.append(tf.summary.histogram(var.op.name, var))
         self.summary.append(tf.summary.histogram(var.op.name+'/grad', grad))
@@ -334,27 +335,20 @@ class MLSHAgent(object):
       # self.summary_writer.add_summary(summary, cter)
 
     # Update the master policy
-
-    # TODO:
-    # master policy takes decisions every N steps so it should:
-    # sum up rewards over N steps
-    # compute advantage
-    # update
     # note there is something to figure out with learning rate
+    n_master_steps = math.ceil(len(rbs) / self.subpol_frames)
 
     # get decisions made by master policy every self.subpol_frames steps:
-    # master_choices = [v for i,v in enumerate(self.ep_subpol_choices) if i % self.subpol_frames == 0]
-    subpolicy_selected = np.zeros([int(len(rbs) / self.subpol_frames), self.num_subpol])
+    subpolicy_selected = np.zeros([n_master_steps, self.num_subpol])
     for i, policy_index in enumerate(self.ep_subpol_choices):
       if i % self.subpol_frames == 0:
         subpolicy_selected[int(i/self.subpol_frames), policy_index] = 1
 
     # sum rewards gotten between each change of subpolicy and compute values:
-    assert len(rbs) % self.subpol_frames == 0 # TODO: deal with weird cases
-    master_value_target = np.zeros([int(len(rbs) / self.subpol_frames)], dtype=np.float32)
+    master_value_target = np.zeros([n_master_steps], dtype=np.float32)
     master_value_target[-1] = R_master
 
-    for i in range(int(len(rbs) / self.subpol_frames)):
+    for i in range(n_master_steps):
       sum_rewards = sum([obs.reward for obs,_,_ in rbs[i:(i+self.subpol_frames)]])
       master_value_target[i] = reward + master_disc * master_value_target[i-1]
 
