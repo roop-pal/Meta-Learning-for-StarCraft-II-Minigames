@@ -88,3 +88,14 @@ def screen_channel():
   # return c
   # limit observation space
   return 16
+
+def process_obs(obs, isize):
+  minimap = np.array(obs.observation['minimap'], dtype=np.float32)
+  minimap = np.expand_dims(preprocess_minimap(minimap), axis=0)
+
+  screen = np.array(obs.observation['screen'], dtype=np.float32)
+  screen = np.expand_dims(preprocess_screen(screen), axis=0)
+  # TODO: only use available actions
+  info = np.zeros([1, isize], dtype=np.float32)
+  info[0, obs.observation['available_actions']] = 1
+  return minimap, screen, info
