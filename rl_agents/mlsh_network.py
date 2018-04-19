@@ -53,7 +53,7 @@ def build_atari(minimap, screen, info, msize, ssize, num_action, num_subpol):
   subpol_choice = layers.fully_connected(feat_fc,
                                         num_outputs=num_subpol,
                                         activation_fn=tf.nn.softmax,
-                                        scope='policy_choice')
+                                        scope='subpol_choice')
 
   spatial_actions = []
   non_spatial_actions = []

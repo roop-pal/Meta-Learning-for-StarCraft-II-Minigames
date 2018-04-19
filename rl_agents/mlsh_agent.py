@@ -77,8 +77,6 @@ class MLSHAgent(object):
 
     cliped_grad = []
     for grad, var in grads:
-
-      print(grad)
       # Ignore gradients for other output layers for other subpolicies
       if grad == None:
         continue
@@ -112,7 +110,8 @@ class MLSHAgent(object):
     cliped_grad = []
     for grad, var in grads:
       # assert grad != None
-      if grad is None:
+      if grad is None or ('master_value' not in var.name and 'subpol_choice' not in var.name):
+        # TODO: find a better way to stop gradients in first layers
         # compute_gradients computes grads for some variables not needed / related
         continue
       self.summary.append(tf.summary.histogram(var.op.name, var))
@@ -236,7 +235,25 @@ class MLSHAgent(object):
 
     return actions.FunctionCall(act_id, act_args)
 
-  def update_subpolicies(self, rbs, R, disc, lr, cter, minimaps, screens, infos):
+  def update_subpolicies(self, rbs, disc, lr, cter, minimaps, screens, infos):
+    """
+    Given (already reversed) replay buffer:
+    - computes value for each step
+    - update the subpolicy networks and the first common layers (state representation)
+    """
+    # Compute R, which is value of the last observation
+    obs = rbs[0][-1]
+    if obs.last():
+      R = 0
+    else:
+      minimap, screen, info = U.preprocess_obs(obs, self.isize)
+      feed = {self.minimap: minimap,
+              self.screen: screen,
+              self.info: info}
+      R = self.sess.run(self.value, feed_dict=feed)
+
+    print('R subpolicy: ', R)
+
     value_target = np.zeros([len(rbs)], dtype=np.float32)
     value_target[-1] = R
 
@@ -285,7 +302,22 @@ class MLSHAgent(object):
       _ = self.sess.run(self.subpol_train_ops[pol_id], feed_dict=feed)
       # self.summary_writer.add_summary(summary, cter)
 
-  def update_master_policy(self, rbs, R_master, master_disc, lr, minimaps, screens, infos):
+  def update_master_policy(self, rbs, master_disc, lr, minimaps, screens, infos):
+    """
+    TODO: master policy update shouldn't affect the layers before feat_fc i.e. the input transformation
+    """
+    obs = rbs[0][-1]
+    if obs.last():
+      R_master = 0
+    else:
+      minimap, screen, info = U.preprocess_obs(obs, self.isize)
+      feed = {self.minimap: minimap,
+              self.screen: screen,
+              self.info: info}
+      R_master = self.sess.run(self.master_value, feed_dict=feed)
+
+    print('R_master: ', R_master)
+
     # note there is something to figure out with learning rate
     n_master_steps = math.ceil(len(rbs) / self.subpol_frames)
 
@@ -314,17 +346,6 @@ class MLSHAgent(object):
     _ = self.sess.run(self.master_train_op, feed_dict=feed)
 
   def update(self, rbs, disc, lr, cter):
-    # Compute R, which is value of the last observation
-    obs = rbs[-1][-1]
-    if obs.last():
-      R, R_master = 0, 0
-    else:
-      minimap, screen, info = U.preprocess_obs(obs, self.isize)
-      feed = {self.minimap: minimap,
-              self.screen: screen,
-              self.info: info}
-      R, R_master = self.sess.run([self.value, self.master_value], feed_dict=feed)
-
     # reverse the replay buffer in order to calculate values:
     rbs.reverse()
     self.ep_subpol_choices.reverse()
@@ -332,10 +353,10 @@ class MLSHAgent(object):
     # process the observations from the replay to use them for the update:
     minimaps, screens, infos = U.preprocess_rbs(rbs, self.isize)
 
-    self.update_subpolicies(rbs, R, disc, lr, cter, minimaps, screens, infos)
-
     master_disc = disc # TODO: tune this
-    self.update_master_policy(rbs, R_master, master_disc, lr, minimaps, screens, infos)
+    self.update_master_policy(rbs, master_disc, lr, minimaps, screens, infos)
+
+    self.update_subpolicies(rbs, disc, lr, cter, minimaps, screens, infos)
 
     # TODO: re-initialize master policy (sometimes)
 
