@@ -89,7 +89,7 @@ def screen_channel():
   # limit observation space
   return 16
 
-def process_obs(obs, isize):
+def preprocess_obs(obs, isize):
   minimap = np.array(obs.observation['minimap'], dtype=np.float32)
   minimap = np.expand_dims(preprocess_minimap(minimap), axis=0)
 
@@ -99,3 +99,26 @@ def process_obs(obs, isize):
   info = np.zeros([1, isize], dtype=np.float32)
   info[0, obs.observation['available_actions']] = 1
   return minimap, screen, info
+
+def preprocess_rbs(rbs, isize):
+  """
+  Takes a (reversed) replay buffer rbs, and creates numpy arrays for minimaps, screens and infos
+  to feed the network during update
+  """
+  minimaps = []
+  screens = []
+  infos = []
+
+  # process the observations from the replay to use them for the update:
+  for i, [obs, action, next_obs] in enumerate(rbs):
+    minimap, screen, info = preprocess_obs(obs, isize)
+
+    minimaps.append(minimap)
+    screens.append(screen)
+    infos.append(info)
+
+  minimaps = np.concatenate(minimaps, axis=0)
+  screens = np.concatenate(screens, axis=0)
+  infos = np.concatenate(infos, axis=0)
+
+  return minimaps, screens, infos

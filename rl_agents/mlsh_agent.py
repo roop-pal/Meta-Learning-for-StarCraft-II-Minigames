@@ -46,7 +46,7 @@ class MLSHAgent(object):
     # Epsilon schedule
     self.epsilon = [0.05, 0.2]
 
-  def create_subpolicy(self, opt, pol_id):
+  def build_subpolicy(self, opt, pol_id):
 
     self.spatial_action = self.spatial_actions[pol_id]
     self.non_spatial_action = self.non_spatial_actions[pol_id]
@@ -90,7 +90,7 @@ class MLSHAgent(object):
     self.subpol_train_ops.append(opt.apply_gradients(cliped_grad))
     self.summary_op = tf.summary.merge(self.summary)
 
-  def create_master_policy(self, opt):
+  def build_master_policy(self, opt):
     # Create targets and masks:
     self.master_choices = tf.placeholder(tf.float32, [None], name='master_choices')
     self.subpolicy_selected = tf.placeholder(tf.float32, [None, self.num_subpol], name='subpolicy_selected')
@@ -152,17 +152,14 @@ class MLSHAgent(object):
       opt = tf.train.RMSPropOptimizer(self.learning_rate, decay=0.99, epsilon=1e-10)
 
       for pol_id in range(self.num_subpol):
-        self.create_subpolicy(opt, pol_id)
+        self.build_subpolicy(opt, pol_id)
 
       # Create training operation for the master policy:
-      self.create_master_policy(opt)
+      self.build_master_policy(opt)
 
       self.saver = tf.train.Saver(max_to_keep=100, keep_checkpoint_every_n_hours=1)
 
   def choose_subpolicy(self, minimap, screen, info):
-    # Only change master's choice of subpolicy every self.subpol_frames steps
-    if self.steps_on_subpol % self.subpol_frames == 0:
-
       # Get softmax outputs for choosing subpolicy
       feed = {self.minimap: minimap,
               self.screen: screen,
@@ -171,21 +168,17 @@ class MLSHAgent(object):
         self.subpol_choice,
         feed_dict=feed)
 
+      print('SUBPOLICY CHOICE: ' + str(subpol_choice))
 
       # Choose max probability output for subpolicy
-      self.cur_subpol = np.argmax(subpol_choice)
-      self.steps_on_subpol = 0
+      subpol_choice = np.argmax(subpol_choice)
 
       # Choose subpolicy using epsilon-greedy method
       if self.training and np.random.rand() < self.epsilon[1]:
-        self.cur_subpol = np.random.randint(0, self.num_subpol)
+        # self.cur_subpol = np.random.randint(0, self.num_subpol)
+        subpol_choice = np.random.randint(0, self.num_subpol)
 
-      print('SUBPOLICY CHOICE: ' + str(subpol_choice))
-
-    self.steps_on_subpol += 1
-
-    # Store subpol_choice at each step for later call to update()
-    self.ep_subpol_choices.append(self.cur_subpol)
+      return subpol_choice
 
   def choose_action(self, minimap, screen, info, obs):
     # Run the graph for the current subpolicy to get action
@@ -203,11 +196,6 @@ class MLSHAgent(object):
     act_id = valid_actions[np.argmax(non_spatial_action[valid_actions])]
     target = np.argmax(spatial_action)
     target = [int(target // self.ssize), int(target % self.ssize)]
-
-    # print('Taking action with ID: ' + str(act_id))
-
-    if False:
-      print(actions.FUNCTIONS[act_id].name, target)
 
     # Epsilon greedy exploration
     if self.training and np.random.rand() < self.epsilon[0]:
@@ -229,30 +217,26 @@ class MLSHAgent(object):
     return act_id, act_args
 
   def step(self, obs):
-    minimap, screen, info = U.process_obs(obs, self.isize)
-    self.choose_subpolicy(minimap, screen, info)
+    """
+    Given observation obs:
+    - choose subpolicy to follow (if it's the right time to change)
+    - choose action to perform according to this policy
+    """
+    minimap, screen, info = U.preprocess_obs(obs, self.isize)
+
+    # Only change master's choice of subpolicy every self.subpol_frames steps:
+    if self.steps_on_subpol % self.subpol_frames == 0:
+      self.cur_subpol = self.choose_subpolicy(minimap, screen, info)
+      self.steps_on_subpol = 0
+
+    # Store subpol_choice at each step for later call to update()
+    self.ep_subpol_choices.append(self.cur_subpol)
+
     act_id, act_args = self.choose_action(minimap, screen, info, obs)
+
     return actions.FunctionCall(act_id, act_args)
 
-
-  def update(self, rbs, disc, lr, cter):
-    master_disc = disc # TODO: pass this as argument instead ? and tune the discount ?
-    # Compute R, which is value of the last observation
-    obs = rbs[-1][-1]
-    if obs.last():
-      R, R_master = 0, 0
-    else:
-      minimap, screen, info = U.process_obs(obs, self.isize)
-      feed = {self.minimap: minimap,
-              self.screen: screen,
-              self.info: info}
-      R, R_master = self.sess.run([self.value, self.master_value], feed_dict=feed)
-
-    # Compute targets and masks
-    minimaps = []
-    screens = []
-    infos = []
-
+  def update_subpolicies(self, rbs, R, disc, lr, cter, minimaps, screens, infos):
     value_target = np.zeros([len(rbs)], dtype=np.float32)
     value_target[-1] = R
 
@@ -261,17 +245,7 @@ class MLSHAgent(object):
     valid_non_spatial_action = np.zeros([len(rbs), len(actions.FUNCTIONS)], dtype=np.float32)
     non_spatial_action_selected = np.zeros([len(rbs), len(actions.FUNCTIONS)], dtype=np.float32)
 
-    rbs.reverse()
-    self.ep_subpol_choices.reverse()
-
-    # process the observations from the replay to use them for the update:
     for i, [obs, action, next_obs] in enumerate(rbs):
-      minimap, screen, info = U.process_obs(obs, self.isize)
-
-      minimaps.append(minimap)
-      screens.append(screen)
-      infos.append(info)
-
       reward = obs.reward
       act_id = action.function
       act_args = action.arguments
@@ -289,16 +263,10 @@ class MLSHAgent(object):
           valid_spatial_action[i] = 1
           spatial_action_selected[i, ind] = 1
 
-    minimaps = np.concatenate(minimaps, axis=0)
-    screens = np.concatenate(screens, axis=0)
-    infos = np.concatenate(infos, axis=0)
-
     # Update each subpolicy using gradient descent on the steps of this episode for which that
     # subpolicy was being used
     for pol_id in range(self.num_subpol):
-      # print('UPDATING SUBPOLICY: ' + str(pol_id) + '\n\n')
       pol_inds = np.where(np.array(self.ep_subpol_choices) == pol_id)[0]
-      # print('Step indices for policy: ' + str(pol_inds) + '\n')
 
       # No game steps in this episode used this policy
       if len(pol_inds) == 0:
@@ -317,7 +285,7 @@ class MLSHAgent(object):
       _ = self.sess.run(self.subpol_train_ops[pol_id], feed_dict=feed)
       # self.summary_writer.add_summary(summary, cter)
 
-    # Update the master policy
+  def update_master_policy(self, rbs, R_master, master_disc, lr, minimaps, screens, infos):
     # note there is something to figure out with learning rate
     n_master_steps = math.ceil(len(rbs) / self.subpol_frames)
 
@@ -333,7 +301,7 @@ class MLSHAgent(object):
 
     for i in range(n_master_steps):
       sum_rewards = sum([obs.reward for obs,_,_ in rbs[i:(i+self.subpol_frames)]])
-      master_value_target[i] = reward + master_disc * master_value_target[i-1]
+      master_value_target[i] = sum_rewards + master_disc * master_value_target[i-1]
 
     master_choice_inds = list(range(0, len(rbs), self.subpol_frames))
 
@@ -345,12 +313,33 @@ class MLSHAgent(object):
             self.subpolicy_selected: subpolicy_selected}
     _ = self.sess.run(self.master_train_op, feed_dict=feed)
 
-    # re-initialize master policy:
+  def update(self, rbs, disc, lr, cter):
+    # Compute R, which is value of the last observation
+    obs = rbs[-1][-1]
+    if obs.last():
+      R, R_master = 0, 0
+    else:
+      minimap, screen, info = U.preprocess_obs(obs, self.isize)
+      feed = {self.minimap: minimap,
+              self.screen: screen,
+              self.info: info}
+      R, R_master = self.sess.run([self.value, self.master_value], feed_dict=feed)
 
-    # TODO !
+    # reverse the replay buffer in order to calculate values:
+    rbs.reverse()
+    self.ep_subpol_choices.reverse()
+
+    # process the observations from the replay to use them for the update:
+    minimaps, screens, infos = U.preprocess_rbs(rbs, self.isize)
+
+    self.update_subpolicies(rbs, R, disc, lr, cter, minimaps, screens, infos)
+
+    master_disc = disc # TODO: tune this
+    self.update_master_policy(rbs, R_master, master_disc, lr, minimaps, screens, infos)
+
+    # TODO: re-initialize master policy (sometimes)
 
     self.ep_subpol_choices = []
-
 
   def save_model(self, path, count):
     self.saver.save(self.sess, path+'/model.pkl', count)
