@@ -85,6 +85,7 @@ class MLSHAgent(object):
     value_loss = - tf.reduce_mean(self.value * advantage)
     self.subpol_summary.append(tf.summary.scalar('policy_loss_' + str(pol_id), policy_loss))
     self.subpol_summary.append(tf.summary.scalar('value_loss_' + str(pol_id), value_loss))
+    self.subpol_summary.append(tf.summary.histogram('spatial_action_' + str(pol_id), self.spatial_action))
 
     # TODO: policy penalty
     loss = policy_loss + value_loss
@@ -173,11 +174,18 @@ class MLSHAgent(object):
       # Create training operation for the master policy:
       self.build_master_policy(opt)
 
+      # Log scores and decisions to tensorboard:
       self.summary_op = tf.summary.merge(self.summary)
       self.subpol_summary_op = tf.summary.merge(self.subpol_summary)
 
-      self.score = tf.placeholder(tf.float32, name='episode_score')
-      self.score_summary_op = tf.summary.scalar('episode_score', self.score)
+      self.train_score = tf.placeholder(tf.float32, name='train_score')
+      self.train_score_summary_op = tf.summary.scalar('train_score', self.train_score)
+
+      self.test_score = tf.placeholder(tf.float32, name='test_score')
+      self.test_score_summary_op = tf.summary.scalar('test_score', self.test_score)
+
+      self.ep_subpol_choices_ph = tf.placeholder(tf.float32, [None], name='subpol_choices')
+      self.ep_subpol_choices_op = tf.summary.histogram('subpol_choices', self.ep_subpol_choices_ph)
 
       self.saver = tf.train.Saver(max_to_keep=100, keep_checkpoint_every_n_hours=1)
 
@@ -340,8 +348,14 @@ class MLSHAgent(object):
               self.info: info}
       R_master = self.sess.run(self.master_value, feed_dict=feed)
     
-    score_summary = self.sess.run(self.score_summary_op, feed_dict={self.score: obs.observation['score_cumulative'][0]})
-    self.summary_writer.add_summary(score_summary, cter)
+    train_score_summary = self.sess.run(self.train_score_summary_op, 
+      feed_dict={self.train_score: obs.observation['score_cumulative'][0]})
+    self.summary_writer.add_summary(train_score_summary, cter)
+
+    # TODO: do it in a cleaner way:
+    subpol_choices_summary = self.sess.run(self.ep_subpol_choices_op,
+      feed_dict={self.ep_subpol_choices_ph: self.ep_subpol_choices})
+    self.summary_writer.add_summary(subpol_choices_summary, cter)
 
     # print('R_master: ', R_master)
 
@@ -381,6 +395,10 @@ class MLSHAgent(object):
     if self.test_run and obs.last():
       self.test_scores.append(obs.observation['score_cumulative'][0])
       self.ep_subpol_choices = []
+
+      test_score_summary = self.sess.run(self.test_score_summary_op, 
+        feed_dict={self.test_score: obs.observation['score_cumulative'][0]})
+      self.summary_writer.add_summary(test_score_summary)
       return
 
     print("Total game steps: " + str(self.count_steps))
@@ -392,8 +410,8 @@ class MLSHAgent(object):
     # process the observations from the replay to use them for the update:
     minimaps, screens, infos = U.preprocess_rbs(rbs, self.isize)
 
-    master_disc = disc # TODO: tune this
-    self.update_master_policy(rbs, master_disc, lr, cter, minimaps, screens, infos)
+    master_lr = 33*lr # following MLSH paper
+    self.update_master_policy(rbs, master_disc, master_lr, cter, minimaps, screens, infos)
 
     # train only the master policy, increment steps by number of master policy choices observed
     if self.train_only_master:
