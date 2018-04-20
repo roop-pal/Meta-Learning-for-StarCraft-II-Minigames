@@ -19,7 +19,7 @@ class MLSHAgent(object):
   def __init__(self, training, msize, ssize, num_subpol, subpol_frames, name='MLSH/MLSHAgent'):
     self.name = name
     self.training = training
-    self.summary = []
+    self.summary, self.subpol_summary = [], []
     # Minimap size, screen size and info size
     assert msize == ssize
     self.msize = msize
@@ -58,8 +58,8 @@ class MLSHAgent(object):
     valid_non_spatial_action_prob = tf.clip_by_value(valid_non_spatial_action_prob, 1e-10, 1.)
     non_spatial_action_prob = non_spatial_action_prob / valid_non_spatial_action_prob
     non_spatial_action_log_prob = tf.log(tf.clip_by_value(non_spatial_action_prob, 1e-10, 1.))
-    self.summary.append(tf.summary.histogram('spatial_action_prob_' + str(pol_id), spatial_action_prob))
-    self.summary.append(tf.summary.histogram('non_spatial_action_prob_' + str(pol_id), non_spatial_action_prob))
+    self.subpol_summary.append(tf.summary.histogram('spatial_action_prob_' + str(pol_id), spatial_action_prob))
+    self.subpol_summary.append(tf.summary.histogram('non_spatial_action_prob_' + str(pol_id), non_spatial_action_prob))
 
     # Compute losses, more details in https://arxiv.org/abs/1602.01783
     # Policy loss and value loss
@@ -67,8 +67,8 @@ class MLSHAgent(object):
     advantage = tf.stop_gradient(self.value_target - self.value)
     policy_loss = - tf.reduce_mean(action_log_prob * advantage)
     value_loss = - tf.reduce_mean(self.value * advantage)
-    self.summary.append(tf.summary.scalar('policy_loss', policy_loss))
-    self.summary.append(tf.summary.scalar('value_loss', value_loss))
+    self.subpol_summary.append(tf.summary.scalar('policy_loss_' + str(pol_id), policy_loss))
+    self.subpol_summary.append(tf.summary.scalar('value_loss_' + str(pol_id), value_loss))
 
     # TODO: policy penalty
     loss = policy_loss + value_loss
@@ -80,17 +80,16 @@ class MLSHAgent(object):
       # Ignore gradients for other output layers for other subpolicies
       if grad == None:
         continue
-      self.summary.append(tf.summary.histogram(var.op.name, var))
-      self.summary.append(tf.summary.histogram(var.op.name+'/grad', grad))
+      self.subpol_summary.append(tf.summary.histogram(var.op.name, var))
+      self.subpol_summary.append(tf.summary.histogram(var.op.name+'/grad', grad))
       grad = tf.clip_by_norm(grad, 10.0)
       cliped_grad.append([grad, var])
 
     self.subpol_train_ops.append(opt.apply_gradients(cliped_grad))
-    self.summary_op = tf.summary.merge(self.summary)
+    # self.summary_op = tf.summary.merge(self.summary)
 
   def build_master_policy(self, opt):
     # Create targets and masks:
-    self.master_choices = tf.placeholder(tf.float32, [None], name='master_choices')
     self.subpolicy_selected = tf.placeholder(tf.float32, [None, self.num_subpol], name='subpolicy_selected')
 
     advantage = tf.stop_gradient(self.value_target - self.master_value)
@@ -103,6 +102,8 @@ class MLSHAgent(object):
     self.summary.append(tf.summary.scalar('master_policy_loss', master_policy_loss))
     self.summary.append(tf.summary.scalar('master_value_loss', master_value_loss))
 
+    self.summary.append(tf.summary.histogram('subpol_choice', self.subpol_choice))
+    
     master_loss = master_policy_loss + master_value_loss
 
     grads = opt.compute_gradients(master_loss)
@@ -156,6 +157,12 @@ class MLSHAgent(object):
       # Create training operation for the master policy:
       self.build_master_policy(opt)
 
+      self.summary_op = tf.summary.merge(self.summary)
+      self.subpol_summary_op = tf.summary.merge(self.subpol_summary)
+
+      self.score = tf.placeholder(tf.float32, name='episode_score')
+      self.score_summary_op = tf.summary.scalar('episode_score', self.score)
+
       self.saver = tf.train.Saver(max_to_keep=100, keep_checkpoint_every_n_hours=1)
 
   def choose_subpolicy(self, minimap, screen, info):
@@ -167,7 +174,7 @@ class MLSHAgent(object):
         self.subpol_choice,
         feed_dict=feed)
 
-      print('SUBPOLICY CHOICE: ' + str(subpol_choice))
+      # print('SUBPOLICY CHOICE: ' + str(subpol_choice))
 
       # Choose max probability output for subpolicy
       subpol_choice = np.argmax(subpol_choice)
@@ -252,7 +259,7 @@ class MLSHAgent(object):
               self.info: info}
       R = self.sess.run(self.value, feed_dict=feed)
 
-    print('R subpolicy: ', R)
+    # print('R subpolicy: ', R)
 
     value_target = np.zeros([len(rbs)], dtype=np.float32)
     value_target[-1] = R
@@ -299,10 +306,10 @@ class MLSHAgent(object):
               self.valid_non_spatial_action: valid_non_spatial_action[pol_inds],
               self.non_spatial_action_selected: non_spatial_action_selected[pol_inds],
               self.learning_rate: lr}
-      _ = self.sess.run(self.subpol_train_ops[pol_id], feed_dict=feed)
-      # self.summary_writer.add_summary(summary, cter)
+      _, summary = self.sess.run([self.subpol_train_ops[pol_id], self.subpol_summary_op], feed_dict=feed)
+      self.summary_writer.add_summary(summary, cter)
 
-  def update_master_policy(self, rbs, master_disc, lr, minimaps, screens, infos):
+  def update_master_policy(self, rbs, master_disc, lr, cter, minimaps, screens, infos):
     """
     TODO: master policy update shouldn't affect the layers before feat_fc i.e. the input transformation
     """
@@ -315,8 +322,11 @@ class MLSHAgent(object):
               self.screen: screen,
               self.info: info}
       R_master = self.sess.run(self.master_value, feed_dict=feed)
+    
+    score_summary = self.sess.run(self.score_summary_op, feed_dict={self.score: obs.observation['score_cumulative'][0]})
+    self.summary_writer.add_summary(score_summary, cter)
 
-    print('R_master: ', R_master)
+    # print('R_master: ', R_master)
 
     # note there is something to figure out with learning rate
     n_master_steps = math.ceil(len(rbs) / self.subpol_frames)
@@ -343,7 +353,8 @@ class MLSHAgent(object):
             self.value_target: master_value_target,
             self.learning_rate: lr,
             self.subpolicy_selected: subpolicy_selected}
-    _ = self.sess.run(self.master_train_op, feed_dict=feed)
+    _, summary = self.sess.run([self.master_train_op, self.summary_op], feed_dict=feed)
+    self.summary_writer.add_summary(summary, cter)
 
   def update(self, rbs, disc, lr, cter):
     # reverse the replay buffer in order to calculate values:
@@ -354,7 +365,7 @@ class MLSHAgent(object):
     minimaps, screens, infos = U.preprocess_rbs(rbs, self.isize)
 
     master_disc = disc # TODO: tune this
-    self.update_master_policy(rbs, master_disc, lr, minimaps, screens, infos)
+    self.update_master_policy(rbs, master_disc, lr, cter, minimaps, screens, infos)
 
     self.update_subpolicies(rbs, disc, lr, cter, minimaps, screens, infos)
 

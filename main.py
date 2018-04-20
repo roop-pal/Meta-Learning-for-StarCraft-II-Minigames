@@ -68,7 +68,7 @@ else:
   MAX_AGENT_STEPS = 1e5
   DEVICE = ['/cpu:0']
 
-LOG = FLAGS.log_path+FLAGS.map+'/'+FLAGS.net
+LOG = FLAGS.log_path+FLAGS.map+'/'+FLAGS.net+'/'+FLAGS.agent.rsplit(".", 1)[-1]
 SNAPSHOT = FLAGS.snapshot_path+FLAGS.map+'/'+FLAGS.net
 if not os.path.exists(LOG):
   os.makedirs(LOG)
