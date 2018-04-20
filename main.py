@@ -68,7 +68,7 @@ else:
   MAX_AGENT_STEPS = 1e5
   DEVICE = ['/cpu:0']
 
-LOG = FLAGS.log_path+FLAGS.map+'/'+FLAGS.net
+LOG = FLAGS.log_path+FLAGS.map+'/'+FLAGS.net+'/'+FLAGS.agent.rsplit(".", 1)[-1]
 SNAPSHOT = FLAGS.snapshot_path+FLAGS.map+'/'+FLAGS.net
 if not os.path.exists(LOG):
   os.makedirs(LOG)
@@ -110,12 +110,12 @@ def run_thread(agent, map_name, visualize):
 
     init_time = time.time()
 
-    # Only for a single player!
-    replay_buffer = []
+    replay_buffer = [] # will get observations of each step during an episode to learn once episode is done
     for recorder, is_done in run_loop([agent], env, MAX_AGENT_STEPS):
       if FLAGS.training:
         replay_buffer.append(recorder)
         if is_done:
+          # end of an episode, agent has interacted with env and now we learn from the "replay"
           counter = 0
           with LOCK:
             global COUNTER
@@ -132,12 +132,13 @@ def run_thread(agent, map_name, visualize):
           if COUNTER % 100 == 0:
             time_elapsed = round((time.time() - init_time) / 60, 2) # in minutes
             print('Total time elapsed: {} minutes, Average time per episode: {}'.format(time_elapsed, round(time_elapsed/COUNTER, 2)))
-      elif is_done:
-        obs = recorder[-1].observation
-        score = obs["score_cumulative"][0]
-        print('Your score is '+str(score)+'!')
-        scores.append(score)
-        print('(mean score: {}, max score: {})'.format(np.mean(scores), np.max(scores)))
+    #  elif is_done:
+          obs = recorder[-1].observation
+          score = obs["score_cumulative"][0]
+          print('Your score is '+str(score)+'!')
+          scores.append(score)
+          print('(mean score: {}, max score: {})'.format(np.mean(scores[:-300]), np.max(scores)))
+
     if FLAGS.save_replay:
       env.save_replay(agent.name)
 
@@ -154,7 +155,7 @@ def _main(unused_argv):
   agent_cls = getattr(importlib.import_module(agent_module), agent_name)
 
   if agent_name == "A3CAgent" or agent_name == "MLSHAgent":
-    # for now, A3CAgent is the only agent that needs a custom main loop
+    # these agents cannot be initiated similarly to classic agents
     agents = []
     for i in range(PARALLEL):
       if agent_name == "A3CAgent":
@@ -197,14 +198,6 @@ def _main(unused_argv):
   
   else:
     # other agents just call the usual main loop from pysc2
-    stopwatch.sw.enabled = FLAGS.profile or FLAGS.trace
-    stopwatch.sw.trace = FLAGS.trace
-
-    maps.get(FLAGS.map)  # Assert the map exists.
-
-    agent_module, agent_name = FLAGS.agent.rsplit(".", 1)
-    agent_cls = getattr(importlib.import_module(agent_module), agent_name)
-
     threads = []
     for _ in range(FLAGS.parallel - 1):
       t = threading.Thread(target=pysc2_run_thread, args=(agent_cls, FLAGS.map, False))
