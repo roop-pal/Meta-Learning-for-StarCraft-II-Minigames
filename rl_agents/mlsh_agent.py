@@ -411,7 +411,7 @@ class MLSHAgent(object):
     minimaps, screens, infos = U.preprocess_rbs(rbs, self.isize)
 
     master_lr = 33*lr # following MLSH paper
-    self.update_master_policy(rbs, master_disc, master_lr, cter, minimaps, screens, infos)
+    self.update_master_policy(rbs, disc, master_lr, cter, minimaps, screens, infos)
 
     # train only the master policy, increment steps by number of master policy choices observed
     if self.train_only_master:
