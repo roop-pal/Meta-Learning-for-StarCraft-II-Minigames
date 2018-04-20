@@ -54,9 +54,11 @@ flags.DEFINE_bool("save_replay", False, "Whether to save a replay at the end.")
 
 # Useful to choose number of subpolicies selected from by MLSH master controller
 flags.DEFINE_integer("num_subpol", 2, "Number of subpolicies used for MLSH.")
-flags.DEFINE_integer("subpol_frames", 5, "Number of subpolicies used for MLSH.")
+flags.DEFINE_integer("subpol_steps", 5, "Number of subpolicies used for MLSH.")
 # original flag not included by xhujoy but useful:
 flags.DEFINE_integer("game_steps_per_episode", 0, "Game steps per episode.")
+flags.DEFINE_integer("warmup_len", 100, "Number of episodes for warm up period of training master policy.")
+flags.DEFINE_integer("joint_len", 500, "Number of episodes after warm up for training master and subpolicies.")
 
 FLAGS(sys.argv)
 if FLAGS.training:
@@ -75,6 +77,7 @@ if not os.path.exists(LOG):
 if not os.path.exists(SNAPSHOT):
   os.makedirs(SNAPSHOT)
 
+MLSH_TRAIN_MAPS = ["DefeatRoaches", "MoveToBeacon", "FindAndDefeatZerglings", "CollectMineralShards"]
 
 def pysc2_run_thread(agent_cls, map_name, visualize):
   """Original version of run_thread used for most agents, from pysc2.bin.agent"""
@@ -95,7 +98,7 @@ def pysc2_run_thread(agent_cls, map_name, visualize):
       env.save_replay(agent_cls.__name__)
 
 
-def run_thread(agent, map_name, visualize):
+def run_thread(agent, map_name, visualize, mlsh=False):
   scores = list()
   with sc2_env.SC2Env(
     map_name=map_name,
@@ -111,7 +114,7 @@ def run_thread(agent, map_name, visualize):
     init_time = time.time()
 
     replay_buffer = [] # will get observations of each step during an episode to learn once episode is done
-    for recorder, is_done in run_loop([agent], env, MAX_AGENT_STEPS):
+    for recorder, is_done in run_loop([agent], env, MAX_AGENT_STEPS, mlsh=mlsh, warmup=FLAGS.warmup_len, joint=FLAGS.joint_len):
       if FLAGS.training:
         replay_buffer.append(recorder)
         if is_done:
@@ -135,9 +138,8 @@ def run_thread(agent, map_name, visualize):
     #  elif is_done:
           obs = recorder[-1].observation
           score = obs["score_cumulative"][0]
-          print('Your score is '+str(score)+'!')
           scores.append(score)
-          print('(mean score: {}, max score: {})'.format(np.mean(scores[:-300]), np.max(scores)))
+          print('(episode score: {}, mean score: {}, max score: {})'.format(score, np.mean(scores[-300:]), np.max(scores)))
 
     if FLAGS.save_replay:
       env.save_replay(agent.name)
@@ -161,7 +163,7 @@ def _main(unused_argv):
       if agent_name == "A3CAgent":
         agent = agent_cls(FLAGS.training, FLAGS.minimap_resolution, FLAGS.screen_resolution)
       else:  # i.e. MLSHAgent
-        agent = agent_cls(FLAGS.training, FLAGS.minimap_resolution, FLAGS.screen_resolution, FLAGS.num_subpol, FLAGS.subpol_frames)
+        agent = agent_cls(FLAGS.training, FLAGS.minimap_resolution, FLAGS.screen_resolution, FLAGS.num_subpol, FLAGS.subpol_steps)
 
       agent.build_model(i > 0, DEVICE[i % len(DEVICE)], FLAGS.net)
       agents.append(agent)
@@ -179,16 +181,27 @@ def _main(unused_argv):
       global COUNTER
       COUNTER = agent.load_model(SNAPSHOT)
 
+    mlsh = (agent_name == "MLSHAgent")
+
     # Run threads
     threads = []
     for i in range(PARALLEL - 1):
-      t = threading.Thread(target=run_thread, args=(agents[i], FLAGS.map, False))
+      if not mlsh:
+        t = threading.Thread(target=run_thread, args=(agents[i], FLAGS.map, False, mlsh))
+      else:  # i.e. MLSHAgent
+        # Create agents on different minigames for each thread
+        minigame = MLSH_TRAIN_MAPS[i % len(MLSH_TRAIN_MAPS)]
+        print("\n Minigame for thread " + str(i + 1) + ": " + minigame + "\n")
+        t = threading.Thread(target=run_thread, args=(agents[i], minigame, False, mlsh))
+
       threads.append(t)
       t.daemon = True
       t.start()
       time.sleep(5)
 
-    run_thread(agents[-1], FLAGS.map, FLAGS.render)
+    minigame = MLSH_TRAIN_MAPS[(len(agents) - 1) % len(MLSH_TRAIN_MAPS)]
+    print("\n Minigame for thread " + str(len(agents)) + ": " + minigame + "\n")
+    run_thread(agents[-1], minigame, FLAGS.render, mlsh=mlsh)
 
     for t in threads:
       t.join()

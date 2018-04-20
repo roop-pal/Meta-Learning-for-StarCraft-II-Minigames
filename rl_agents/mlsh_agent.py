@@ -16,7 +16,7 @@ import utils as U
 
 class MLSHAgent(object):
   """An agent specifically for solving the mini-game maps."""
-  def __init__(self, training, msize, ssize, num_subpol, subpol_frames, name='MLSH/MLSHAgent'):
+  def __init__(self, training, msize, ssize, num_subpol, subpol_steps, name='MLSH/MLSHAgent'):
     self.name = name
     self.training = training
     self.summary, self.subpol_summary = [], []
@@ -26,11 +26,16 @@ class MLSHAgent(object):
     self.ssize = ssize
     self.isize = len(actions.FUNCTIONS)
     self.num_subpol = num_subpol
-    self.subpol_frames = subpol_frames
+    self.subpol_steps = subpol_steps
     self.ep_subpol_choices = []
+    self.train_only_master = True
+    self.test_run = False
 
     self.steps_on_subpol = 0
     self.cur_subpol = 0
+
+    self.count_steps = 0
+    self.test_scores = []
 
   def setup(self, sess, summary_writer):
     self.sess = sess
@@ -45,6 +50,17 @@ class MLSHAgent(object):
   def reset(self):
     # Epsilon schedule
     self.epsilon = [0.05, 0.2]
+
+
+  def reset_master(self):
+
+    master_vars = []
+    for v in tf.global_variables():
+      if v.name.startswith('subpol_choice/') or v.name.startswith('master_value/'):
+        master_vars.append(v)
+
+    self.sess.run(tf.variables_initializer(master_vars))
+
 
   def build_subpolicy(self, opt, pol_id):
 
@@ -206,6 +222,7 @@ class MLSHAgent(object):
     # Epsilon greedy exploration
     if self.training and np.random.rand() < self.epsilon[0]:
       act_id = np.random.choice(valid_actions)
+
     if self.training and np.random.rand() < self.epsilon[1]:
       dy = np.random.randint(-4, 5)
       target[0] = int(max(0, min(self.ssize-1, target[0]+dy)))
@@ -230,8 +247,8 @@ class MLSHAgent(object):
     """
     minimap, screen, info = U.preprocess_obs(obs, self.isize)
 
-    # Only change master's choice of subpolicy every self.subpol_frames steps:
-    if self.steps_on_subpol % self.subpol_frames == 0:
+    # Only change master's choice of subpolicy every self.subpol_steps steps:
+    if self.steps_on_subpol % self.subpol_steps == 0:
       self.cur_subpol = self.choose_subpolicy(minimap, screen, info)
       self.steps_on_subpol = 0
 
@@ -329,23 +346,23 @@ class MLSHAgent(object):
     # print('R_master: ', R_master)
 
     # note there is something to figure out with learning rate
-    n_master_steps = math.ceil(len(rbs) / self.subpol_frames)
+    n_master_steps = math.ceil(len(rbs) / self.subpol_steps)
 
-    # get decisions made by master policy every self.subpol_frames steps:
+    # get decisions made by master policy every self.subpol_steps steps:
     subpolicy_selected = np.zeros([n_master_steps, self.num_subpol])
     for i, policy_index in enumerate(self.ep_subpol_choices):
-      if i % self.subpol_frames == 0:
-        subpolicy_selected[int(i/self.subpol_frames), policy_index] = 1
+      if i % self.subpol_steps == 0:
+        subpolicy_selected[int(i/self.subpol_steps), policy_index] = 1
 
     # sum rewards gotten between each change of subpolicy and compute values:
     master_value_target = np.zeros([n_master_steps], dtype=np.float32)
     master_value_target[-1] = R_master
 
     for i in range(n_master_steps):
-      sum_rewards = sum([obs.reward for obs,_,_ in rbs[i:(i+self.subpol_frames)]])
+      sum_rewards = sum([obs.reward for obs,_,_ in rbs[i:(i+self.subpol_steps)]])
       master_value_target[i] = sum_rewards + master_disc * master_value_target[i-1]
 
-    master_choice_inds = list(range(0, len(rbs), self.subpol_frames))
+    master_choice_inds = list(range(0, len(rbs), self.subpol_steps))
 
     feed = {self.minimap: minimaps[master_choice_inds],
             self.screen: screens[master_choice_inds],
@@ -357,6 +374,17 @@ class MLSHAgent(object):
     self.summary_writer.add_summary(summary, cter)
 
   def update(self, rbs, disc, lr, cter):
+
+    # If doing a test run, get the cumulative score over full minigame (rather than just max_agent_steps steps)
+    obs = rbs[-1][-1]
+    # Print out score on a test run through a full episode, don't update network on test run
+    if self.test_run and obs.last():
+      self.test_scores.append(obs.observation['score_cumulative'][0])
+      self.ep_subpol_choices = []
+      return
+
+    print("Total game steps: " + str(self.count_steps))
+
     # reverse the replay buffer in order to calculate values:
     rbs.reverse()
     self.ep_subpol_choices.reverse()
@@ -367,7 +395,13 @@ class MLSHAgent(object):
     master_disc = disc # TODO: tune this
     self.update_master_policy(rbs, master_disc, lr, cter, minimaps, screens, infos)
 
-    self.update_subpolicies(rbs, disc, lr, cter, minimaps, screens, infos)
+    # train only the master policy, increment steps by number of master policy choices observed
+    if self.train_only_master:
+      self.count_steps += int(len(rbs) / self.subpol_steps)
+
+    else:
+      self.count_steps += len(rbs)
+      self.update_subpolicies(rbs, disc, lr, cter, minimaps, screens, infos)
 
     # TODO: re-initialize master policy (sometimes)
 
