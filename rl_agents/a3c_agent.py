@@ -27,6 +27,8 @@ class A3CAgent(object):
     self.count_steps = 0
     self.test_scores = []
 
+    self.test_run = False
+
 
   def setup(self, sess, summary_writer):
     self.sess = sess

@@ -51,6 +51,14 @@ class MLSHAgent(object):
     init_op = tf.global_variables_initializer()
     self.sess.run(init_op)
 
+    print("MASTER VARS FOR THREAD " + str(self.num_thread) + ":")
+
+    variables_names = [v.name for v in tf.trainable_variables()]
+    values = self.sess.run(variables_names)
+    for k, v in zip(variables_names, values):
+      print("Variable: ", k)
+      print("Shape: ", v.shape)
+
 
   def reset(self):
     # Epsilon schedule
@@ -59,27 +67,28 @@ class MLSHAgent(object):
 
   def reset_master(self):
 
+    pass
     # print(tf.global_variables())
 
-    master_vars = []
-
-    print("Current thread: " + str(self.num_thread))
-
-    variables_names = [v.name for v in tf.trainable_variables()]
-    values = self.sess.run(variables_names)
-    for k, v in zip(variables_names, values):
-      print("Variable: ", k)
-      print("Shape: ", v.shape)
-      # print(v)
-
-    for v in tf.trainable_variables():
-      if v.name.startswith('subpol_choice_' + str(self.num_thread)) \
-              or v.name.startswith('master_value_' + str(self.num_thread)):
-        master_vars.append(v)
-
-    print(master_vars)
-
-    self.sess.run(tf.variables_initializer(master_vars))
+    # master_vars = []
+    #
+    # print("Current thread: " + str(self.num_thread))
+    #
+    # variables_names = [v.name for v in tf.trainable_variables()]
+    # values = self.sess.run(variables_names)
+    # for k, v in zip(variables_names, values):
+    #   print("Variable: ", k)
+    #   print("Shape: ", v.shape)
+    #   # print(v)
+    #
+    # for v in tf.trainable_variables():
+    #   if v.name.startswith('subpol_choice_' + str(self.num_thread)) \
+    #           or v.name.startswith('master_value_' + str(self.num_thread)):
+    #     master_vars.append(v)
+    #
+    # print(master_vars)
+    #
+    # self.sess.run(tf.variables_initializer(master_vars))
 
 
   def build_subpolicy(self, opt, pol_id, reuse):
@@ -153,6 +162,9 @@ class MLSHAgent(object):
     cliped_grad = []
     for grad, var in grads:
       # assert grad != None
+
+        # TODO: MAKE THIS WORK WITH MULTIPLE THREADS
+
       if grad is None or ('master_value' not in var.name and 'subpol_choice' not in var.name):
         # TODO: find a better way to stop gradients in first layers
         # compute_gradients computes grads for some variables not needed / related
@@ -210,6 +222,7 @@ class MLSHAgent(object):
         self.score_summary_op = tf.summary.scalar('episode_score', self.score)
 
         self.saver = tf.train.Saver(max_to_keep=100, keep_checkpoint_every_n_hours=1)
+
 
   def choose_subpolicy(self, minimap, screen, info):
       # Get softmax outputs for choosing subpolicy
