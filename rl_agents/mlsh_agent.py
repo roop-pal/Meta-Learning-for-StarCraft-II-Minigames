@@ -51,14 +51,6 @@ class MLSHAgent(object):
     init_op = tf.global_variables_initializer()
     self.sess.run(init_op)
 
-    print("MASTER VARS FOR THREAD " + str(self.num_thread) + ":")
-
-    variables_names = [v.name for v in tf.trainable_variables()]
-    values = self.sess.run(variables_names)
-    for k, v in zip(variables_names, values):
-      print("Variable: ", k)
-      print("Shape: ", v.shape)
-
 
   def reset(self):
     # Epsilon schedule
@@ -67,19 +59,13 @@ class MLSHAgent(object):
 
   def reset_master(self):
 
-    pass
-    # print(tf.global_variables())
+    print("GLOBAL VARIABLES FOR THREAD " + str(self.num_thread) + ":")
 
-    # master_vars = []
-    #
-    # print("Current thread: " + str(self.num_thread))
-    #
-    # variables_names = [v.name for v in tf.trainable_variables()]
-    # values = self.sess.run(variables_names)
-    # for k, v in zip(variables_names, values):
-    #   print("Variable: ", k)
-    #   print("Shape: ", v.shape)
-    #   # print(v)
+    variables_names = [v.name for v in tf.global_variables()]
+    values = self.sess.run(variables_names)
+    for k, v in zip(variables_names, values):
+      print("Variable: ", k)
+      print("Shape: ", v.shape)
     #
     # for v in tf.trainable_variables():
     #   if v.name.startswith('subpol_choice_' + str(self.num_thread)) \
