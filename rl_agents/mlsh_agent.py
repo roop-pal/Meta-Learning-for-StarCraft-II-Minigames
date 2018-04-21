@@ -16,7 +16,8 @@ import utils as U
 
 class MLSHAgent(object):
   """An agent specifically for solving the mini-game maps."""
-  def __init__(self, training, msize, ssize, num_subpol, subpol_steps, name='MLSH/MLSHAgent'):
+  def __init__(self, training, msize, ssize, num_subpol, subpol_steps, num_thread, name='MLSH/MLSHAgent'):
+
     self.name = name
     self.training = training
     self.summary, self.subpol_summary = [], []
@@ -27,6 +28,8 @@ class MLSHAgent(object):
     self.isize = len(actions.FUNCTIONS)
     self.num_subpol = num_subpol
     self.subpol_steps = subpol_steps
+    self.num_thread = num_thread
+
     self.ep_subpol_choices = []
     self.train_only_master = True
     self.test_run = False
@@ -41,72 +44,72 @@ class MLSHAgent(object):
     self.sess = sess
     self.summary_writer = summary_writer
 
-
   def initialize(self):
     init_op = tf.global_variables_initializer()
     self.sess.run(init_op)
-
 
   def reset(self):
     # Epsilon schedule
     self.epsilon = [0.05, 0.2]
 
-
   def reset_master(self):
+    """
+    Reset the variables controlling the master policy
+    """
+    self.sess.run(tf.variables_initializer(self.master_vars))
 
-    master_vars = []
-    for v in tf.global_variables():
-      if v.name.startswith('subpol_choice/') or v.name.startswith('master_value/'):
-        master_vars.append(v)
+  def build_subpolicy(self, opt, pol_id, reuse):
+    """
+    Build the training operation for a given subpolicy
+    """
+    with tf.variable_scope('subpol'):
+      if reuse:
+        tf.get_variable_scope().reuse_variables()
+        assert tf.get_variable_scope().reuse
 
-    self.sess.run(tf.variables_initializer(master_vars))
+      self.spatial_action = self.spatial_actions[pol_id]
+      self.non_spatial_action = self.non_spatial_actions[pol_id]
 
+      spatial_action_prob = tf.reduce_sum(self.spatial_action * self.spatial_action_selected, axis=1)
+      spatial_action_log_prob = tf.log(tf.clip_by_value(spatial_action_prob, 1e-10, 1.))
+      non_spatial_action_prob = tf.reduce_sum(self.non_spatial_action * self.non_spatial_action_selected, axis=1)
+      valid_non_spatial_action_prob = tf.reduce_sum(self.non_spatial_action * self.valid_non_spatial_action, axis=1)
+      valid_non_spatial_action_prob = tf.clip_by_value(valid_non_spatial_action_prob, 1e-10, 1.)
+      non_spatial_action_prob = non_spatial_action_prob / valid_non_spatial_action_prob
+      non_spatial_action_log_prob = tf.log(tf.clip_by_value(non_spatial_action_prob, 1e-10, 1.))
+      self.subpol_summary.append(tf.summary.histogram('spatial_action_prob_' + str(pol_id), spatial_action_prob))
+      self.subpol_summary.append(tf.summary.histogram('non_spatial_action_prob_' + str(pol_id), non_spatial_action_prob))
 
-  def build_subpolicy(self, opt, pol_id):
+      # Compute losses, more details in https://arxiv.org/abs/1602.01783
+      # Policy loss and value loss
+      action_log_prob = self.valid_spatial_action * spatial_action_log_prob + non_spatial_action_log_prob
+      advantage = tf.stop_gradient(self.value_target - self.value)
+      policy_loss = - tf.reduce_mean(action_log_prob * advantage)
+      value_loss = - tf.reduce_mean(self.value * advantage)
+      self.subpol_summary.append(tf.summary.scalar('policy_loss_' + str(pol_id), policy_loss))
+      self.subpol_summary.append(tf.summary.scalar('value_loss_' + str(pol_id), value_loss))
 
-    self.spatial_action = self.spatial_actions[pol_id]
-    self.non_spatial_action = self.non_spatial_actions[pol_id]
+      loss = policy_loss + value_loss
 
-    spatial_action_prob = tf.reduce_sum(self.spatial_action * self.spatial_action_selected, axis=1)
-    spatial_action_log_prob = tf.log(tf.clip_by_value(spatial_action_prob, 1e-10, 1.))
-    non_spatial_action_prob = tf.reduce_sum(self.non_spatial_action * self.non_spatial_action_selected, axis=1)
-    valid_non_spatial_action_prob = tf.reduce_sum(self.non_spatial_action * self.valid_non_spatial_action, axis=1)
-    valid_non_spatial_action_prob = tf.clip_by_value(valid_non_spatial_action_prob, 1e-10, 1.)
-    non_spatial_action_prob = non_spatial_action_prob / valid_non_spatial_action_prob
-    non_spatial_action_log_prob = tf.log(tf.clip_by_value(non_spatial_action_prob, 1e-10, 1.))
-    self.subpol_summary.append(tf.summary.histogram('spatial_action_prob_' + str(pol_id), spatial_action_prob))
-    self.subpol_summary.append(tf.summary.histogram('non_spatial_action_prob_' + str(pol_id), non_spatial_action_prob))
+      grads = opt.compute_gradients(loss)
 
-    # Compute losses, more details in https://arxiv.org/abs/1602.01783
-    # Policy loss and value loss
-    action_log_prob = self.valid_spatial_action * spatial_action_log_prob + non_spatial_action_log_prob
-    advantage = tf.stop_gradient(self.value_target - self.value)
-    policy_loss = - tf.reduce_mean(action_log_prob * advantage)
-    value_loss = - tf.reduce_mean(self.value * advantage)
-    self.subpol_summary.append(tf.summary.scalar('policy_loss_' + str(pol_id), policy_loss))
-    self.subpol_summary.append(tf.summary.scalar('value_loss_' + str(pol_id), value_loss))
-    self.subpol_summary.append(tf.summary.histogram('spatial_action_' + str(pol_id), self.spatial_action))
+      cliped_grad = []
+      for grad, var in grads:
+        # Ignore gradients for other output layers for other subpolicies
+        if grad == None:
+          continue
+        self.subpol_summary.append(tf.summary.histogram(var.op.name, var))
+        self.subpol_summary.append(tf.summary.histogram(var.op.name+'/grad', grad))
+        grad = tf.clip_by_norm(grad, 10.0)
+        cliped_grad.append([grad, var])
 
-    # TODO: policy penalty
-    loss = policy_loss + value_loss
-
-    grads = opt.compute_gradients(loss)
-
-    cliped_grad = []
-    for grad, var in grads:
-      # Ignore gradients for other output layers for other subpolicies
-      if grad == None:
-        continue
-      self.subpol_summary.append(tf.summary.histogram(var.op.name, var))
-      self.subpol_summary.append(tf.summary.histogram(var.op.name+'/grad', grad))
-      grad = tf.clip_by_norm(grad, 10.0)
-      cliped_grad.append([grad, var])
-
-    self.subpol_train_ops.append(opt.apply_gradients(cliped_grad))
-    # self.summary_op = tf.summary.merge(self.summary)
+      self.subpol_train_ops.append(opt.apply_gradients(cliped_grad))
+      # self.summary_op = tf.summary.merge(self.summary)
 
   def build_master_policy(self, opt):
-    # Create targets and masks:
+    """
+    Build the training operation for the master policy by creating targets and masks:
+    """
     self.subpolicy_selected = tf.placeholder(tf.float32, [None, self.num_subpol], name='subpolicy_selected')
 
     advantage = tf.stop_gradient(self.value_target - self.master_value)
@@ -120,18 +123,19 @@ class MLSHAgent(object):
     self.summary.append(tf.summary.scalar('master_value_loss', master_value_loss))
 
     self.summary.append(tf.summary.histogram('subpol_choice', self.subpol_choice))
-    
+
     master_loss = master_policy_loss + master_value_loss
 
     grads = opt.compute_gradients(master_loss)
 
     cliped_grad = []
     for grad, var in grads:
-      # assert grad != None
+
       if grad is None or ('master_value' not in var.name and 'subpol_choice' not in var.name):
         # TODO: find a better way to stop gradients in first layers
         # compute_gradients computes grads for some variables not needed / related
         continue
+
       self.summary.append(tf.summary.histogram(var.op.name, var))
       self.summary.append(tf.summary.histogram(var.op.name+'/grad', grad))
       grad = tf.clip_by_norm(grad, 10.0)
@@ -140,10 +144,10 @@ class MLSHAgent(object):
       self.master_train_op = opt.apply_gradients(cliped_grad)
 
   def build_model(self, reuse, dev, ntype):
+    """
+    Build the TensorFlow model for the MLSH agent on this thread
+    """
     with tf.variable_scope(self.name) and tf.device(dev):
-      if reuse:
-        tf.get_variable_scope().reuse_variables()
-        assert tf.get_variable_scope().reuse
 
       # Set inputs of networks
       self.minimap = tf.placeholder(tf.float32, [None, U.minimap_channel(), self.msize, self.msize], name='minimap')
@@ -151,8 +155,8 @@ class MLSHAgent(object):
       self.info = tf.placeholder(tf.float32, [None, self.isize], name='info')
 
       # Build networks
-      net = build_net(self.minimap, self.screen, self.info, self.msize, self.ssize, len(actions.FUNCTIONS), ntype, self.num_subpol)
-      self.spatial_actions, self.non_spatial_actions, self.value, self.master_value, self.subpol_choice = net
+      net = build_net(self.minimap, self.screen, self.info, self.msize, self.ssize, len(actions.FUNCTIONS), ntype, self.num_subpol, reuse, self.num_thread)
+      self.spatial_actions, self.non_spatial_actions, self.value, self.master_value, self.subpol_choice, self.master_vars = net
 
       # Create training operation for the subpolicies:
       # Set targets and masks
@@ -164,32 +168,38 @@ class MLSHAgent(object):
 
       self.subpol_train_ops = []
 
-      # Build the optimizer
-      self.learning_rate = tf.placeholder(tf.float32, None, name='learning_rate')
-      opt = tf.train.RMSPropOptimizer(self.learning_rate, decay=0.99, epsilon=1e-10)
+      # Variables kept by training operations (such as gradients) are given scope 'train_vars'
+      with tf.variable_scope('train_vars'):
 
-      for pol_id in range(self.num_subpol):
-        self.build_subpolicy(opt, pol_id)
+        # Build the optimizer
+        self.learning_rate = tf.placeholder(tf.float32, None, name='learning_rate')
+        opt = tf.train.RMSPropOptimizer(self.learning_rate, decay=0.99, epsilon=1e-10)
 
-      # Create training operation for the master policy:
-      self.build_master_policy(opt)
+        for pol_id in range(self.num_subpol):
+          self.build_subpolicy(opt, pol_id, reuse)
 
-      # Log scores and decisions to tensorboard:
-      self.summary_op = tf.summary.merge(self.summary)
-      self.subpol_summary_op = tf.summary.merge(self.subpol_summary)
+        # Create training operation for the master policy:
+        self.build_master_policy(opt)
 
-      self.train_score = tf.placeholder(tf.float32, name='train_score')
-      self.train_score_summary_op = tf.summary.scalar('train_score', self.train_score)
+        # Log scores and decisions to tensorboard:
+        self.summary_op = tf.summary.merge(self.summary)
+        self.subpol_summary_op = tf.summary.merge(self.subpol_summary)
 
-      self.test_score = tf.placeholder(tf.float32, name='test_score')
-      self.test_score_summary_op = tf.summary.scalar('test_score', self.test_score)
+        self.train_score = tf.placeholder(tf.float32, name='train_score')
+        self.train_score_summary_op = tf.summary.scalar('train_score', self.train_score)
 
-      self.ep_subpol_choices_ph = tf.placeholder(tf.float32, [None], name='subpol_choices')
-      self.ep_subpol_choices_op = tf.summary.histogram('subpol_choices', self.ep_subpol_choices_ph)
+        self.test_score = tf.placeholder(tf.float32, name='test_score')
+        self.test_score_summary_op = tf.summary.scalar('test_score', self.test_score)
 
-      self.saver = tf.train.Saver(max_to_keep=100, keep_checkpoint_every_n_hours=1)
+        self.ep_subpol_choices_ph = tf.placeholder(tf.float32, [None], name='subpol_choices')
+        self.ep_subpol_choices_op = tf.summary.histogram('subpol_choices', self.ep_subpol_choices_ph)
+
+        self.saver = tf.train.Saver(max_to_keep=100, keep_checkpoint_every_n_hours=1)
 
   def choose_subpolicy(self, minimap, screen, info):
+      """
+      Select a subpolicy using an epsilon-greedy approach on the master policy
+      """
       # Get softmax outputs for choosing subpolicy
       feed = {self.minimap: minimap,
               self.screen: screen,
@@ -197,8 +207,6 @@ class MLSHAgent(object):
       subpol_choice = self.sess.run(
         self.subpol_choice,
         feed_dict=feed)
-
-      # print('SUBPOLICY CHOICE: ' + str(subpol_choice))
 
       # Choose max probability output for subpolicy
       subpol_choice = np.argmax(subpol_choice)
@@ -211,6 +219,9 @@ class MLSHAgent(object):
       return subpol_choice
 
   def choose_action(self, minimap, screen, info, obs):
+    """
+    Choose an action based on the current subpolicy
+    """
     # Run the graph for the current subpolicy to get action
     feed = {self.minimap: minimap,
             self.screen: screen,
@@ -284,8 +295,6 @@ class MLSHAgent(object):
               self.info: info}
       R = self.sess.run(self.value, feed_dict=feed)
 
-    # print('R subpolicy: ', R)
-
     value_target = np.zeros([len(rbs)], dtype=np.float32)
     value_target[-1] = R
 
@@ -336,7 +345,7 @@ class MLSHAgent(object):
 
   def update_master_policy(self, rbs, master_disc, lr, cter, minimaps, screens, infos):
     """
-    TODO: master policy update shouldn't affect the layers before feat_fc i.e. the input transformation
+    Update the master policy based on its choices and observed rewards from a single episode
     """
     obs = rbs[0][-1]
     if obs.last():
@@ -388,7 +397,9 @@ class MLSHAgent(object):
     self.summary_writer.add_summary(summary, cter)
 
   def update(self, rbs, disc, lr, cter):
-
+    """
+    Update network parameters based on the observations made from a single episode
+    """
     # If doing a test run, get the cumulative score over full minigame (rather than just max_agent_steps steps)
     obs = rbs[-1][-1]
     # Print out score on a test run through a full episode, don't update network on test run
@@ -402,18 +413,19 @@ class MLSHAgent(object):
       return
 
     print("Total game steps: " + str(self.count_steps))
+    print("Thread: " + str(self.num_thread))
 
-    # reverse the replay buffer in order to calculate values:
+    # Reverse the replay buffer in order to calculate values:
     rbs.reverse()
     self.ep_subpol_choices.reverse()
 
-    # process the observations from the replay to use them for the update:
+    # Process the observations from the replay to use them for the update:
     minimaps, screens, infos = U.preprocess_rbs(rbs, self.isize)
 
     master_lr = 33*lr # following MLSH paper
     self.update_master_policy(rbs, disc, master_lr, cter, minimaps, screens, infos)
 
-    # train only the master policy, increment steps by number of master policy choices observed
+    # Train only the master policy, increment steps by number of master policy choices observed
     if self.train_only_master:
       self.count_steps += int(len(rbs) / self.subpol_steps)
 
@@ -421,13 +433,10 @@ class MLSHAgent(object):
       self.count_steps += len(rbs)
       self.update_subpolicies(rbs, disc, lr, cter, minimaps, screens, infos)
 
-    # TODO: re-initialize master policy (sometimes)
-
     self.ep_subpol_choices = []
 
   def save_model(self, path, count):
     self.saver.save(self.sess, path+'/model.pkl', count)
-
 
   def load_model(self, path):
     ckpt = tf.train.get_checkpoint_state(path)

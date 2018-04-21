@@ -54,7 +54,8 @@ flags.DEFINE_bool("save_replay", False, "Whether to save a replay at the end.")
 
 # Useful to choose number of subpolicies selected from by MLSH master controller
 flags.DEFINE_integer("num_subpol", 2, "Number of subpolicies used for MLSH.")
-flags.DEFINE_integer("subpol_steps", 5, "Number of steps taken by supolicies used for MLSH.")
+flags.DEFINE_integer("subpol_steps", 10, "Number of subpolicies used for MLSH.")
+
 # original flag not included by xhujoy but useful:
 flags.DEFINE_integer("game_steps_per_episode", 0, "Game steps per episode.")
 flags.DEFINE_integer("warmup_len", 100, "Number of episodes for warm up period of training master policy.")
@@ -77,7 +78,7 @@ if not os.path.exists(LOG):
 if not os.path.exists(SNAPSHOT):
   os.makedirs(SNAPSHOT)
 
-MLSH_TRAIN_MAPS = ["DefeatRoaches", "MoveToBeacon", "FindAndDefeatZerglings", "CollectMineralShards"]
+MLSH_TRAIN_MAPS = ["MoveToBeacon", "CollectMineralShards", "DefeatRoaches", "FindAndDefeatZerglings"]
 
 def pysc2_run_thread(agent_cls, map_name, visualize):
   """Original version of run_thread used for most agents, from pysc2.bin.agent"""
@@ -139,7 +140,7 @@ def run_thread(agent, map_name, visualize, mlsh=False):
           obs = recorder[-1].observation
           score = obs["score_cumulative"][0]
           scores.append(score)
-          print('(episode score: {}, mean score: {}, max score: {})'.format(score, np.mean(scores[-300:]), np.max(scores)))
+          print('(episode score: {}, mean score: {}, max score: {})\n'.format(score, np.mean(scores[-300:]), np.max(scores)))
 
     if FLAGS.save_replay:
       env.save_replay(agent.name)
@@ -158,12 +159,15 @@ def _main(unused_argv):
 
   if agent_name == "A3CAgent" or agent_name == "MLSHAgent":
     # these agents cannot be initiated similarly to classic agents
+
+    mlsh = (agent_name == "MLSHAgent")
+
     agents = []
     for i in range(PARALLEL):
       if agent_name == "A3CAgent":
         agent = agent_cls(FLAGS.training, FLAGS.minimap_resolution, FLAGS.screen_resolution)
       else:  # i.e. MLSHAgent
-        agent = agent_cls(FLAGS.training, FLAGS.minimap_resolution, FLAGS.screen_resolution, FLAGS.num_subpol, FLAGS.subpol_steps)
+        agent = agent_cls(FLAGS.training, FLAGS.minimap_resolution, FLAGS.screen_resolution, FLAGS.num_subpol, FLAGS.subpol_steps, i+1)
 
       agent.build_model(i > 0, DEVICE[i % len(DEVICE)], FLAGS.net)
       agents.append(agent)
@@ -177,11 +181,11 @@ def _main(unused_argv):
       agents[i].setup(sess, summary_writer)
 
     agent.initialize()
+
     if not FLAGS.training or FLAGS.continuation:
       global COUNTER
       COUNTER = agent.load_model(SNAPSHOT)
 
-    mlsh = (agent_name == "MLSHAgent")
 
     # Run threads
     threads = []

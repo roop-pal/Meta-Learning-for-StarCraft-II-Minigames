@@ -11,9 +11,10 @@ def run_loop(agents, env, max_frames=0, mlsh=False, warmup=2, joint=8):
 
   try:
     # Store episode number for this thread
-
-    num_test_runs = 50
     num_ep = 0
+
+    # Number of test runs to perform after joint training
+    num_test_runs = 50
 
     while True:
       num_frames = 0
@@ -30,22 +31,22 @@ def run_loop(agents, env, max_frames=0, mlsh=False, warmup=2, joint=8):
 
           # Ended  joint training, reset master value and subpol choice parameters
           if (num_ep % (warmup + joint + num_test_runs)) == 0:
-            print("\nResetting master policy")
+            print("Resetting master policy")
             a.reset_master()
 
-          print('\nWarming Up...')
+          print('Warming Up...')
 
         # Joint training period where both master and subpolicies trained of "joint" episodes
         elif mlsh and (num_ep % (warmup + joint + num_test_runs) < warmup + joint):
           a.train_only_master = False
           a.test_run = False
 
-          print('\nJoint Training...')
+          print('Joint Training...')
 
         # Do test runs after joint training has finished
         elif mlsh:
           a.test_run = True
-          print('\nTesting...')
+          print('Testing...')
 
       num_ep += 1
 

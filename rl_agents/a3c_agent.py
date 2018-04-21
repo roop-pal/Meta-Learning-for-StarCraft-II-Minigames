@@ -28,6 +28,8 @@ class A3CAgent(object):
     self.test_scores = []
     self.test_run = False
 
+    self.test_run = False
+
 
   def setup(self, sess, summary_writer):
     self.sess = sess
