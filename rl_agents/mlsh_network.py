@@ -99,13 +99,13 @@ def build_atari(minimap, screen, info, msize, ssize, num_action, num_subpol, reu
   master_value = tf.reshape(layers.fully_connected(feat_fc,
                                             num_outputs=1,
                                             activation_fn=None,
-                                            scope='master_value_'+str(num_thread + 1)), [-1])
+                                            scope='master_value_'+str(num_thread)), [-1])
 
   # Choose a subpolicy to use
   subpol_choice = layers.fully_connected(feat_fc,
                                         num_outputs=num_subpol,
                                         activation_fn=tf.nn.softmax,
-                                        scope='subpol_choice_'+str(num_thread + 1))
+                                        scope='subpol_choice_'+str(num_thread))
 
   return spatial_actions, non_spatial_actions, value, master_value, subpol_choice
 

@@ -163,7 +163,7 @@ def _main(unused_argv):
       if agent_name == "A3CAgent":
         agent = agent_cls(FLAGS.training, FLAGS.minimap_resolution, FLAGS.screen_resolution)
       else:  # i.e. MLSHAgent
-        agent = agent_cls(FLAGS.training, FLAGS.minimap_resolution, FLAGS.screen_resolution, FLAGS.num_subpol, FLAGS.subpol_steps, i)
+        agent = agent_cls(FLAGS.training, FLAGS.minimap_resolution, FLAGS.screen_resolution, FLAGS.num_subpol, FLAGS.subpol_steps, i+1)
 
       agent.build_model(i > 0, DEVICE[i % len(DEVICE)], FLAGS.net)
       agents.append(agent)
