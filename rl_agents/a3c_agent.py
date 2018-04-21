@@ -26,6 +26,7 @@ class A3CAgent(object):
     self.isize = 23
     self.count_steps = 0
     self.test_scores = []
+    self.test_run = False
 
     self.test_run = False
 
@@ -169,7 +170,7 @@ class A3CAgent(object):
     obs = rbs[-1][-1]
 
     # Print out score on a test run through a full episode, don't update network on test run
-    if not self.training and obs.last():
+    if not self.test_run and obs.last():
       self.test_scores.append(obs.observation['score_cumulative'][0])
       print("TEST SCORE: " + str(self.test_scores[-1]))
       return
