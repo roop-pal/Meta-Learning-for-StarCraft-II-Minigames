@@ -41,7 +41,7 @@ flags.DEFINE_integer("minimap_resolution", 64, "Resolution for minimap feature l
 flags.DEFINE_integer("step_mul", 8, "Game steps per agent step.")
 
 flags.DEFINE_string("agent", "rl_agents.a3c_agent.A3CAgent", "Which agent to run.")
-flags.DEFINE_string("net", "fcn", "atari or fcn.")
+flags.DEFINE_string("net", "atari", "atari or fcn.")
 flags.DEFINE_enum("agent_race", None, sc2_env.races.keys(), "Agent's race.")
 flags.DEFINE_enum("bot_race", None, sc2_env.races.keys(), "Bot's race.")
 flags.DEFINE_enum("difficulty", None, sc2_env.difficulties.keys(), "Bot's strength.")
@@ -71,8 +71,13 @@ else:
   MAX_AGENT_STEPS = 1e5
   DEVICE = ['/cpu:0']
 
-LOG = FLAGS.log_path+FLAGS.map+'/'+FLAGS.net+'/'+FLAGS.agent.rsplit(".", 1)[-1]
-SNAPSHOT = FLAGS.snapshot_path+FLAGS.map+'/'+FLAGS.net
+if FLAGS.agent.rsplit(".", 1)[-1] != 'MLSHAgent':
+  LOG = FLAGS.log_path+FLAGS.map+'/'+FLAGS.net
+  SNAPSHOT = FLAGS.snapshot_path+FLAGS.map+'/'+FLAGS.net
+else:
+  LOG = FLAGS.log_path+'MLSHAgent'+'/'+FLAGS.net
+  SNAPSHOT = FLAGS.snapshot_path+'MLSHAgent'+'/'+FLAGS.net
+
 if not os.path.exists(LOG):
   os.makedirs(LOG)
 if not os.path.exists(SNAPSHOT):

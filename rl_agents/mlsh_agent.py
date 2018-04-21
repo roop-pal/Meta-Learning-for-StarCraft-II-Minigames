@@ -186,10 +186,10 @@ class MLSHAgent(object):
         self.subpol_summary_op = tf.summary.merge(self.subpol_summary)
 
         self.train_score = tf.placeholder(tf.float32, name='train_score')
-        self.train_score_summary_op = tf.summary.scalar('train_score', self.train_score)
+        self.train_score_summary_op = tf.summary.scalar('train_score_thread_' + str(self.num_subpol), self.train_score)
 
         self.test_score = tf.placeholder(tf.float32, name='test_score')
-        self.test_score_summary_op = tf.summary.scalar('test_score', self.test_score)
+        self.test_score_summary_op = tf.summary.scalar('test_score_thread_' + str(self.num_subpol), self.test_score)
 
         self.ep_subpol_choices_ph = tf.placeholder(tf.float32, [None], name='subpol_choices')
         self.ep_subpol_choices_op = tf.summary.histogram('subpol_choices', self.ep_subpol_choices_ph)
