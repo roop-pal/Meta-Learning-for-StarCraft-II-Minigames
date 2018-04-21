@@ -18,8 +18,6 @@ class MLSHAgent(object):
   """An agent specifically for solving the mini-game maps."""
   def __init__(self, training, msize, ssize, num_subpol, subpol_steps, num_thread, name='MLSH/MLSHAgent'):
 
-    print("NAME", name)
-
     self.name = name
     self.training = training
     self.summary, self.subpol_summary = [], []
@@ -59,7 +57,6 @@ class MLSHAgent(object):
 
   # Reset the variables controlling the master policy
   def reset_master(self):
-
     self.sess.run(tf.variables_initializer(self.master_vars))
 
 
@@ -150,11 +147,7 @@ class MLSHAgent(object):
 
   def build_model(self, reuse, dev, ntype):
 
-    print("NAME:", self.name)
-
     with tf.variable_scope(self.name) and tf.device(dev):
-
-      print("build_model scope: " + str(tf.get_variable_scope().name))
 
       # Set inputs of networks
       self.minimap = tf.placeholder(tf.float32, [None, U.minimap_channel(), self.msize, self.msize], name='minimap')

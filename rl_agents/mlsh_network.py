@@ -108,7 +108,7 @@ def build_atari(minimap, screen, info, msize, ssize, num_action, num_subpol, reu
                                         scope='subpol_choice_'+str(num_thread))
 
 
-  print("GLOBAL VARIABLES FOR THREAD " + str(num_thread) + ":")
+  print("Master variables for thread " + str(num_thread) + ":")
   master_vars = []
   for var in tf.trainable_variables():
       if 'master_value_'+str(num_thread) in var.name or 'subpol_choice_'+str(num_thread) in var.name:

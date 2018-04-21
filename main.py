@@ -77,7 +77,7 @@ if not os.path.exists(LOG):
 if not os.path.exists(SNAPSHOT):
   os.makedirs(SNAPSHOT)
 
-MLSH_TRAIN_MAPS = ["DefeatRoaches", "MoveToBeacon", "FindAndDefeatZerglings", "CollectMineralShards"]
+MLSH_TRAIN_MAPS = ["MoveToBeacon", "CollectMineralShards", "DefeatRoaches", "FindAndDefeatZerglings"]
 
 def pysc2_run_thread(agent_cls, map_name, visualize):
   """Original version of run_thread used for most agents, from pysc2.bin.agent"""
@@ -139,7 +139,7 @@ def run_thread(agent, map_name, visualize, mlsh=False):
           obs = recorder[-1].observation
           score = obs["score_cumulative"][0]
           scores.append(score)
-          print('(episode score: {}, mean score: {}, max score: {})'.format(score, np.mean(scores[-300:]), np.max(scores)))
+          print('(episode score: {}, mean score: {}, max score: {})\n'.format(score, np.mean(scores[-300:]), np.max(scores)))
 
     if FLAGS.save_replay:
       env.save_replay(agent.name)
