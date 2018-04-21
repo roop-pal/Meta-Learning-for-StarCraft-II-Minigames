@@ -178,9 +178,8 @@ def _main(unused_argv):
     summary_writer = tf.summary.FileWriter(LOG)
     for i in range(PARALLEL):
       agents[i].setup(sess, summary_writer)
-      agents[i].initialize()
 
-
+    agent.initialize()
 
     if not FLAGS.training or FLAGS.continuation:
       global COUNTER

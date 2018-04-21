@@ -57,26 +57,10 @@ class MLSHAgent(object):
     self.epsilon = [0.05, 0.2]
 
 
+  # Reset the variables controlling the master policy
   def reset_master(self):
 
-    print("GLOBAL VARIABLES FOR THREAD " + str(self.num_thread) + ":")
-
-    variables_names = [v.name for v in tf.global_variables()]
-    values = self.sess.run(variables_names)
-    for k, v in zip(variables_names, values):
-      print("Variable: ", k)
-      print("Shape: ", v.shape)
-
-    master_vars = []
-
-    for v in tf.trainable_variables():
-      if v.name.startswith('subpol_choice_' + str(self.num_thread)) \
-              or v.name.startswith('master_value_' + str(self.num_thread)):
-        master_vars.append(v)
-
-    print(master_vars)
-
-    self.sess.run(tf.variables_initializer(master_vars))
+    self.sess.run(tf.variables_initializer(self.master_vars))
 
 
   def build_subpolicy(self, opt, pol_id, reuse):
@@ -179,7 +163,7 @@ class MLSHAgent(object):
 
       # Build networks
       net = build_net(self.minimap, self.screen, self.info, self.msize, self.ssize, len(actions.FUNCTIONS), ntype, self.num_subpol, reuse, self.num_thread)
-      self.spatial_actions, self.non_spatial_actions, self.value, self.master_value, self.subpol_choice = net
+      self.spatial_actions, self.non_spatial_actions, self.value, self.master_value, self.subpol_choice, self.master_vars = net
 
       # Create training operation for the subpolicies:
       # Set targets and masks

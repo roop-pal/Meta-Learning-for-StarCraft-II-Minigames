@@ -107,7 +107,15 @@ def build_atari(minimap, screen, info, msize, ssize, num_action, num_subpol, reu
                                         activation_fn=tf.nn.softmax,
                                         scope='subpol_choice_'+str(num_thread))
 
-  return spatial_actions, non_spatial_actions, value, master_value, subpol_choice
+
+  print("GLOBAL VARIABLES FOR THREAD " + str(num_thread) + ":")
+  master_vars = []
+  for var in tf.trainable_variables():
+      if 'master_value_'+str(num_thread) in var.name or 'subpol_choice_'+str(num_thread) in var.name:
+        master_vars.append(var)
+        print("Variable: ", var.name)
+
+  return spatial_actions, non_spatial_actions, value, master_value, subpol_choice, master_vars
 
 
 def build_fcn(minimap, screen, info, msize, ssize, num_action):
