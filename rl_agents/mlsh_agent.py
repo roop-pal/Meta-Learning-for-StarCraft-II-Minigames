@@ -399,6 +399,7 @@ class MLSHAgent(object):
       return
 
     print("Total game steps: " + str(self.count_steps))
+    print("Thread: " + str(self.num_thread))
 
     # reverse the replay buffer in order to calculate values:
     rbs.reverse()
