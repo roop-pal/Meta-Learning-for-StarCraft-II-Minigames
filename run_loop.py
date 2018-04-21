@@ -11,9 +11,10 @@ def run_loop(agents, env, max_frames=0, mlsh=False, warmup=2, joint=8):
 
   try:
     # Store episode number for this thread
-
-    num_test_runs = 50
     num_ep = 0
+
+    # Number of test runs to perform after joint training
+    num_test_runs = 50
 
     while True:
       num_frames = 0

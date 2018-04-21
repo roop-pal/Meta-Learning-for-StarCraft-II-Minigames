@@ -16,12 +16,13 @@ def build_net(minimap, screen, info, msize, ssize, num_action, ntype, num_subpol
 
 
 def build_atari(minimap, screen, info, msize, ssize, num_action, num_subpol, reuse, num_thread):
-  # Extract features
+  """
+  Builds subpolicies and master policy which share an atari-net initial set of feature layers
+  """
 
+  # Create a variable scope for variables which are reused across different threads (i.e. the subpolicy parameters)
   with tf.variable_scope("reuse_net"):
 
-
-      print("REUSING: ", reuse)
       if reuse:
           tf.get_variable_scope().reuse_variables()
           assert tf.get_variable_scope().reuse
@@ -95,6 +96,7 @@ def build_atari(minimap, screen, info, msize, ssize, num_action, num_subpol, reu
                                                 activation_fn=None,
                                                 scope='value'), [-1])
 
+  # Note: master policy parameters below are outside of variable scope "reuse_net" since they are not reused across threads
   # Value function for the master policy
   master_value = tf.reshape(layers.fully_connected(feat_fc,
                                             num_outputs=1,
@@ -107,7 +109,7 @@ def build_atari(minimap, screen, info, msize, ssize, num_action, num_subpol, reu
                                         activation_fn=tf.nn.softmax,
                                         scope='subpol_choice_'+str(num_thread))
 
-
+  # Get the variables corresponding to the master policy layers above, used for resetting master policy
   print("Master variables for thread " + str(num_thread) + ":")
   master_vars = []
   for var in tf.trainable_variables():
