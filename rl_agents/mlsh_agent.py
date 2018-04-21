@@ -66,15 +66,17 @@ class MLSHAgent(object):
     for k, v in zip(variables_names, values):
       print("Variable: ", k)
       print("Shape: ", v.shape)
-    #
-    # for v in tf.trainable_variables():
-    #   if v.name.startswith('subpol_choice_' + str(self.num_thread)) \
-    #           or v.name.startswith('master_value_' + str(self.num_thread)):
-    #     master_vars.append(v)
-    #
-    # print(master_vars)
-    #
-    # self.sess.run(tf.variables_initializer(master_vars))
+
+    master_vars = []
+
+    for v in tf.trainable_variables():
+      if v.name.startswith('subpol_choice_' + str(self.num_thread)) \
+              or v.name.startswith('master_value_' + str(self.num_thread)):
+        master_vars.append(v)
+
+    print(master_vars)
+
+    self.sess.run(tf.variables_initializer(master_vars))
 
 
   def build_subpolicy(self, opt, pol_id, reuse):
@@ -431,8 +433,6 @@ class MLSHAgent(object):
     else:
       self.count_steps += len(rbs)
       self.update_subpolicies(rbs, disc, lr, cter, minimaps, screens, infos)
-
-    # TODO: re-initialize master policy (sometimes)
 
     self.ep_subpol_choices = []
 

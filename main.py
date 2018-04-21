@@ -158,6 +158,9 @@ def _main(unused_argv):
 
   if agent_name == "A3CAgent" or agent_name == "MLSHAgent":
     # these agents cannot be initiated similarly to classic agents
+
+    mlsh = (agent_name == "MLSHAgent")
+
     agents = []
     for i in range(PARALLEL):
       if agent_name == "A3CAgent":
@@ -175,13 +178,14 @@ def _main(unused_argv):
     summary_writer = tf.summary.FileWriter(LOG)
     for i in range(PARALLEL):
       agents[i].setup(sess, summary_writer)
+      agents[i].initialize()
 
-    agent.initialize()
+
+
     if not FLAGS.training or FLAGS.continuation:
       global COUNTER
       COUNTER = agent.load_model(SNAPSHOT)
 
-    mlsh = (agent_name == "MLSHAgent")
 
     # Run threads
     threads = []
