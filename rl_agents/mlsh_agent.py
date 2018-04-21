@@ -63,16 +63,16 @@ class MLSHAgent(object):
 
     master_vars = []
 
-    print("Current scope: " + str(tf.get_variable_scope().name))
+    print("Current thread: " + str(self.num_thread))
 
-    variables_names = [v.name for v in tf.trainable_variables()]
+    variables_names = [v.name for v in tf.global_variables()]
     values = self.sess.run(variables_names)
     for k, v in zip(variables_names, values):
       print("Variable: ", k)
       print("Shape: ", v.shape)
       # print(v)
 
-    for v in tf.trainable_variables():
+    for v in tf.global_variables():
       if v.name.startswith('subpol_choice_' + str(self.num_thread + 1)) \
               or v.name.startswith('master_value_' + str(self.num_thread + 1)):
         master_vars.append(v)
