@@ -208,9 +208,12 @@ def _main(unused_argv):
       t.start()
       time.sleep(5)
 
-    minigame = MLSH_TRAIN_MAPS[(len(agents) - 1) % len(MLSH_TRAIN_MAPS)]
-    print("\n Minigame for thread " + str(len(agents)) + ": " + minigame + "\n")
-    run_thread(agents[-1], minigame, FLAGS.render, mlsh=mlsh)
+    if not mlsh:
+      run_thread(agents[-1], FLAGS.map, FLAGS.render)
+    else: # i.e. MLSHAgent
+      minigame = MLSH_TRAIN_MAPS[(len(agents) - 1) % len(MLSH_TRAIN_MAPS)]
+      print("\n Minigame for thread " + str(len(agents)) + ": " + minigame + "\n")
+      run_thread(agents[-1], minigame, FLAGS.render, mlsh=mlsh)
 
     for t in threads:
       t.join()
