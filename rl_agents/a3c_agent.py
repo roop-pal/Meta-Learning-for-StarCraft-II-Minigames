@@ -28,9 +28,6 @@ class A3CAgent(object):
     self.test_scores = []
     self.test_run = False
 
-    self.test_run = False
-
-
   def setup(self, sess, summary_writer):
     self.sess = sess
     self.summary_writer = summary_writer
@@ -87,6 +84,9 @@ class A3CAgent(object):
       value_loss = - tf.reduce_mean(self.value * advantage)
       self.summary.append(tf.summary.scalar('policy_loss', policy_loss))
       self.summary.append(tf.summary.scalar('value_loss', value_loss))
+
+      self.train_score = tf.placeholder(tf.float32, name='train_score')
+      self.summary.append(tf.summary.scalar('train_score', self.train_score))
 
       # TODO: policy penalty
       loss = policy_loss + value_loss
@@ -170,10 +170,12 @@ class A3CAgent(object):
     obs = rbs[-1][-1]
 
     # Print out score on a test run through a full episode, don't update network on test run
-    if not self.test_run and obs.last():
+    if self.test_run and obs.last():
       self.test_scores.append(obs.observation['score_cumulative'][0])
       print("TEST SCORE: " + str(self.test_scores[-1]))
       return
+    else:
+      train_score = obs.observation['score_cumulative'][0]
 
     print("Total game steps: " + str(self.count_steps))
     self.count_steps += len(rbs)
@@ -255,7 +257,8 @@ class A3CAgent(object):
             self.spatial_action_selected: spatial_action_selected,
             self.valid_non_spatial_action: valid_non_spatial_action,
             self.non_spatial_action_selected: non_spatial_action_selected,
-            self.learning_rate: lr}
+            self.learning_rate: lr,
+            self.train_score: train_score}
     _, summary = self.sess.run([self.train_op, self.summary_op], feed_dict=feed)
     self.summary_writer.add_summary(summary, cter)
 
