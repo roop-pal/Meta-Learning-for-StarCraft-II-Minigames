@@ -69,7 +69,7 @@ def screen_channel():
       c += 1
     else:
       c += features.SCREEN_FEATURES[i].scale
-  return c
+  return 23 # quickfix to make it compatible with pysc2 v1.2
 
 def preprocess_obs(obs, isize):
   minimap = np.array(obs.observation['minimap'], dtype=np.float32)
