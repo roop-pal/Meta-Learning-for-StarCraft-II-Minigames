@@ -7,28 +7,16 @@ from pysc2.lib import actions
 from pysc2.lib import features
 
 # TODO: preprocessing functions for the following layers
-_MINIMAP_HEIGHT_MAP = features.MINIMAP_FEATURES.height_map.index
-_MINIMAP_CREEP = features.MINIMAP_FEATURES.creep.index
 _MINIMAP_PLAYER_ID = features.MINIMAP_FEATURES.player_id.index
 _SCREEN_PLAYER_ID = features.SCREEN_FEATURES.player_id.index
 _SCREEN_UNIT_TYPE = features.SCREEN_FEATURES.unit_type.index
-_SCREEN_HEIGHT_MAP = features.SCREEN_FEATURES.height_map.index
-_SCREEN_CREEP = features.SCREEN_FEATURES.creep.index
-_SCREEN_POWER = features.SCREEN_FEATURES.power.index
-_SCREEN_UNIT_ENERGY = features.SCREEN_FEATURES.unit_energy.index
-_SCREEN_UNIT_ENERGY_RATIO = features.SCREEN_FEATURES.unit_energy_ratio.index
-_SCREEN_UNIT_SHIELDS = features.SCREEN_FEATURES.unit_shields.index
-_SCREEN_UNIT_SHIELDS_RATIO = features.SCREEN_FEATURES.unit_shields_ratio.index
-_SCREEN_EFFECTS = features.SCREEN_FEATURES.effects.index
 
 
 def preprocess_minimap(minimap):
   layers = []
   assert minimap.shape[0] == len(features.MINIMAP_FEATURES)
   for i in range(len(features.MINIMAP_FEATURES)):
-    if i == _MINIMAP_HEIGHT_MAP or i == _MINIMAP_CREEP:
-      continue
-    elif i == _MINIMAP_PLAYER_ID:
+    if i == _MINIMAP_PLAYER_ID:
       layers.append(minimap[i:i+1] / features.MINIMAP_FEATURES[i].scale)
     elif features.MINIMAP_FEATURES[i].type == features.FeatureType.SCALAR:
       layers.append(minimap[i:i+1] / features.MINIMAP_FEATURES[i].scale)
@@ -47,9 +35,7 @@ def preprocess_screen(screen):
   # for i in range(len(features.SCREEN_FEATURES)):
   features_v11 = list(range(9)) + [10,12,14,15] # quickfix to make it compatible with pysc2 v1.2
   for i in features_v11:
-    if i == _SCREEN_HEIGHT_MAP or i == _SCREEN_CREEP or i == _SCREEN_POWER or i == _SCREEN_UNIT_ENERGY or i == _SCREEN_UNIT_ENERGY_RATIO or i == _SCREEN_UNIT_SHIELDS or i == _SCREEN_UNIT_SHIELDS_RATIO or i == _SCREEN_EFFECTS:
-      continue
-    elif i == _SCREEN_PLAYER_ID or i == _SCREEN_UNIT_TYPE:
+    if i == _SCREEN_PLAYER_ID or i == _SCREEN_UNIT_TYPE:
       layers.append(screen[i:i+1] / features.SCREEN_FEATURES[i].scale)
     elif features.SCREEN_FEATURES[i].type == features.FeatureType.SCALAR:
       layers.append(screen[i:i+1] / features.SCREEN_FEATURES[i].scale)
@@ -71,9 +57,7 @@ def minimap_channel():
       c += 1
     else:
       c += features.MINIMAP_FEATURES[i].scale
-  # return c
-  # limit observation space
-  return 14
+  return c
 
 
 def screen_channel():
@@ -85,9 +69,7 @@ def screen_channel():
       c += 1
     else:
       c += features.SCREEN_FEATURES[i].scale
-  # return c
-  # limit observation space
-  return 16
+  return c
 
 def preprocess_obs(obs, isize):
   minimap = np.array(obs.observation['minimap'], dtype=np.float32)
