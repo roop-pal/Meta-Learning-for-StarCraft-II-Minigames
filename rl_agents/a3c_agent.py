@@ -23,7 +23,7 @@ class A3CAgent(object):
     assert msize == ssize
     self.msize = msize
     self.ssize = ssize
-    self.isize = 23
+    self.isize = len(actions.FUNCTIONS)
     self.count_steps = 0
     self.test_scores = []
     self.test_run = False
@@ -113,13 +113,9 @@ class A3CAgent(object):
     minimap = np.expand_dims(U.preprocess_minimap(minimap), axis=0)
     screen = np.array(obs.observation['screen'], dtype=np.float32)
     screen = np.expand_dims(U.preprocess_screen(screen), axis=0)
-    # TODO: only use available actions
-    action_indices = [0,1,2,3,5,7,12,13,14,15,18,19,20,261,274,331,332,333,334,451,452,453,456]
-    valid_actions = list(set(obs.observation['available_actions']) & set(action_indices))
-    # print("valid_actions",valid_actions)
-    valid_actions_indices = [action_indices.index(i) for i in valid_actions]
+
     info = np.zeros([1, self.isize], dtype=np.float32)
-    info[0, valid_actions_indices] = 1
+    info[0, obs.observation['available_actions']] = 1
 
     feed = {self.minimap: minimap,
             self.screen: screen,
@@ -133,11 +129,10 @@ class A3CAgent(object):
     # Select an action and a spatial target
     non_spatial_action = non_spatial_action.ravel()
     spatial_action = spatial_action.ravel()
-    # valid_actions = obs.observation['available_actions']
-    # act_id = valid_actions[np.argmax(non_spatial_action[valid_actions])]
+    valid_actions = obs.observation['available_actions']
+    act_id = valid_actions[np.argmax(non_spatial_action[valid_actions])]
     # print("valid",non_spatial_action[valid_actions_indices])
     
-    act_id = valid_actions[np.argmax(non_spatial_action[valid_actions_indices])]
     # print("SELECTED",act_id)
     target = np.argmax(spatial_action)
     target = [int(target // self.ssize), int(target % self.ssize)]
@@ -187,11 +182,8 @@ class A3CAgent(object):
       minimap = np.expand_dims(U.preprocess_minimap(minimap), axis=0)
       screen = np.array(obs.observation['screen'], dtype=np.float32)
       screen = np.expand_dims(U.preprocess_screen(screen), axis=0)
-      action_indices = [0,1,2,3,5,7,12,13,14,15,18,19,20,261,274,331,332,333,334,451,452,453,456]
-      valid_actions = list(set(obs.observation['available_actions']) & set(action_indices))
-      valid_actions_indices = [action_indices.index(i) for i in valid_actions]
       info = np.zeros([1, self.isize], dtype=np.float32)
-      info[0, valid_actions_indices] = 1
+      info[0, obs.observation['available_actions']] = 1
 
       feed = {self.minimap: minimap,
               self.screen: screen,
@@ -217,11 +209,8 @@ class A3CAgent(object):
       minimap = np.expand_dims(U.preprocess_minimap(minimap), axis=0)
       screen = np.array(obs.observation['screen'], dtype=np.float32)
       screen = np.expand_dims(U.preprocess_screen(screen), axis=0)
-      action_indices = [0,1,2,3,5,7,12,13,14,15,18,19,20,261,274,331,332,333,334,451,452,453,456]
-      valid_actions = list(set(obs.observation['available_actions']) & set(action_indices))
-      valid_actions_indices = [action_indices.index(i) for i in valid_actions]
       info = np.zeros([1, self.isize], dtype=np.float32)
-      info[0, valid_actions_indices] = 1
+      info[0, obs.observation['available_actions']] = 1
 
       minimaps.append(minimap)
       screens.append(screen)
@@ -233,9 +222,9 @@ class A3CAgent(object):
 
       value_target[i] = reward + disc * value_target[i-1]
 
-      # valid_actions = obs.observation["available_actions"]
-      valid_non_spatial_action[i, valid_actions_indices] = 1
-      non_spatial_action_selected[i, action_indices.index(act_id)] = 1
+      valid_actions = obs.observation["available_actions"]
+      valid_non_spatial_action[i, valid_actions] = 1
+      non_spatial_action_selected[i, act_id] = 1
 
       args = actions.FUNCTIONS[act_id].args
       for arg, act_arg in zip(args, act_args):
