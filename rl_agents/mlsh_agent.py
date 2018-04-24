@@ -269,7 +269,13 @@ class MLSHAgent(object):
     # Only change master's choice of subpolicy every self.subpol_steps steps:
     if self.steps_on_subpol % self.subpol_steps == 0:
       self.cur_subpol = self.choose_subpolicy(minimap, screen, info)
+      # print('Current subpol: ', self.cur_subpol)
+      with open("mlsh_log.txt", "w") as file:
+        # tail this file in command line to follow which subpol is being used
+        file.write("subpol: " + str(self.cur_subpol) + '\n')
       self.steps_on_subpol = 0
+
+    self.steps_on_subpol += 1
 
     # Store subpol_choice at each step for later call to update()
     self.ep_subpol_choices.append(self.cur_subpol)
