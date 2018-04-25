@@ -40,6 +40,8 @@ class MLSHAgent(object):
     self.count_steps = 0
     self.test_scores = []
 
+    self.actions_taken_ids, self.actions_taken_ids_ops = [], [] # only for visualization in tensorboard
+
   def setup(self, sess, summary_writer):
     self.sess = sess
     self.summary_writer = summary_writer
@@ -70,6 +72,9 @@ class MLSHAgent(object):
       self.spatial_action = self.spatial_actions[pol_id]
       self.non_spatial_action = self.non_spatial_actions[pol_id]
 
+      self.actions_taken_ids.append(tf.placeholder(tf.int32, [None], name='actions_taken_ids_' + str(pol_id)))
+      self.actions_taken_ids_ops.append(tf.summary.histogram('actions_taken_ids_' + str(pol_id), self.actions_taken_ids[-1]))
+
       spatial_action_prob = tf.reduce_sum(self.spatial_action * self.spatial_action_selected, axis=1)
       spatial_action_log_prob = tf.log(tf.clip_by_value(spatial_action_prob, 1e-10, 1.))
       non_spatial_action_prob = tf.reduce_sum(self.non_spatial_action * self.non_spatial_action_selected, axis=1)
@@ -79,8 +84,6 @@ class MLSHAgent(object):
       non_spatial_action_log_prob = tf.log(tf.clip_by_value(non_spatial_action_prob, 1e-10, 1.))
       self.subpol_summary.append(tf.summary.histogram('spatial_action_prob_' + str(pol_id), spatial_action_prob))
       self.subpol_summary.append(tf.summary.histogram('non_spatial_action_prob_' + str(pol_id), non_spatial_action_prob))
-
-      self.subpol_summary.append(tf.summary.histogram('actions_taken_ids_' + str(pol_id), self.actions_taken_ids))
 
       # Compute losses, more details in https://arxiv.org/abs/1602.01783
       # Policy loss and value loss
@@ -100,8 +103,9 @@ class MLSHAgent(object):
         # Ignore gradients for other output layers for other subpolicies
         if grad == None:
           continue
-        self.subpol_summary.append(tf.summary.histogram(var.op.name, var))
-        self.subpol_summary.append(tf.summary.histogram(var.op.name+'/grad', grad))
+        # not that useful to visualize:
+        # self.subpol_summary.append(tf.summary.histogram(var.op.name, var))
+        # self.subpol_summary.append(tf.summary.histogram(var.op.name+'/grad', grad))
         grad = tf.clip_by_norm(grad, 10.0)
         cliped_grad.append([grad, var])
 
@@ -138,8 +142,9 @@ class MLSHAgent(object):
         # compute_gradients computes grads for some variables not needed / related
         continue
 
-      self.summary.append(tf.summary.histogram(var.op.name, var))
-      self.summary.append(tf.summary.histogram(var.op.name+'/grad', grad))
+      # not that useful to visualize:
+      # self.summary.append(tf.summary.histogram(var.op.name, var))
+      # self.summary.append(tf.summary.histogram(var.op.name+'/grad', grad))
       grad = tf.clip_by_norm(grad, 10.0)
       cliped_grad.append([grad, var])
 
@@ -184,9 +189,6 @@ class MLSHAgent(object):
         # Build the optimizer
         self.learning_rate = tf.placeholder(tf.float32, None, name='learning_rate')
         opt = tf.train.RMSPropOptimizer(self.learning_rate, decay=0.99, epsilon=1e-10)
-
-        # TODO: move this somewhere else
-        self.actions_taken_ids = tf.placeholder(tf.float32, [None], name='actions_taken_ids') # for visualization in tensorboard
 
         for pol_id in range(self.num_subpol):
           self.build_subpolicy(opt, pol_id, reuse)
@@ -322,7 +324,7 @@ class MLSHAgent(object):
     valid_non_spatial_action = np.zeros([len(rbs), len(actions.FUNCTIONS)], dtype=np.float32)
     non_spatial_action_selected = np.zeros([len(rbs), len(actions.FUNCTIONS)], dtype=np.float32)
 
-    actions_taken_ids = np.zeros([len(rbs)], dtype=np.float32) # only for visualization in tensorboard
+    actions_taken_ids = np.zeros([len(rbs)], dtype=np.int32) # only for visualization in tensorboard
 
     for i, [obs, action, next_obs] in enumerate(rbs):
       reward = obs.reward
@@ -362,11 +364,14 @@ class MLSHAgent(object):
               self.spatial_action_selected: spatial_action_selected[pol_inds],
               self.valid_non_spatial_action: valid_non_spatial_action[pol_inds],
               self.non_spatial_action_selected: non_spatial_action_selected[pol_inds],
-              self.learning_rate: lr,
-              self.actions_taken_ids: actions_taken_ids[pol_inds]} # only for visualization in tensorboard
-      print('feeeeed: ', actions_taken_ids[pol_inds])
+              self.learning_rate: lr}
+
       _, summary = self.sess.run([self.subpol_train_ops[pol_id], self.subpol_summary_op], feed_dict=feed)
       self.summary_writer.add_summary(summary, cter)
+
+      actions_taken_ids_summary = self.sess.run(self.actions_taken_ids_ops[pol_id],
+        feed_dict={self.actions_taken_ids[pol_id]: actions_taken_ids[pol_inds]})
+      self.summary_writer.add_summary(actions_taken_ids_summary, cter)
 
   def update_master_policy(self, rbs, master_disc, lr, cter, minimaps, screens, infos):
     """
