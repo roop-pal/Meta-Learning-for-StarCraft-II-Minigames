@@ -80,6 +80,8 @@ class MLSHAgent(object):
       self.subpol_summary.append(tf.summary.histogram('spatial_action_prob_' + str(pol_id), spatial_action_prob))
       self.subpol_summary.append(tf.summary.histogram('non_spatial_action_prob_' + str(pol_id), non_spatial_action_prob))
 
+      self.subpol_summary.append(tf.summary.histogram('actions_taken_ids_' + str(pol_id), self.actions_taken_ids))
+
       # Compute losses, more details in https://arxiv.org/abs/1602.01783
       # Policy loss and value loss
       action_log_prob = self.valid_spatial_action * spatial_action_log_prob + non_spatial_action_log_prob
@@ -146,6 +148,14 @@ class MLSHAgent(object):
   def build_model(self, reuse, dev, ntype):
     """
     Build the TensorFlow model for the MLSH agent on this thread
+    - valid_spatial_action:            shape (len(rbs),) 
+      = whether agent took a spatial action or not at each step of replay buffer
+    - spatial_action_selected:         shape (len(rbs), screensize**2)
+      = one-hot encoding of (x,y) argts of action at each step replay buffer
+    - valid_non_spatial_action:        shape (len(rbs), len(actions.FUNCTIONS))
+      = one-hot encoding of available actions at each step of replay buffer
+    - non_spatial_action_selected:     shape (len(rbs), len(actions.FUNCTIONS))
+      = one-hot encoding of the action taken at each step of replay buffer
     """
     with tf.variable_scope(self.name) and tf.device(dev):
 
@@ -174,6 +184,9 @@ class MLSHAgent(object):
         # Build the optimizer
         self.learning_rate = tf.placeholder(tf.float32, None, name='learning_rate')
         opt = tf.train.RMSPropOptimizer(self.learning_rate, decay=0.99, epsilon=1e-10)
+
+        # TODO: move this somewhere else
+        self.actions_taken_ids = tf.placeholder(tf.float32, [None], name='actions_taken_ids') # for visualization in tensorboard
 
         for pol_id in range(self.num_subpol):
           self.build_subpolicy(opt, pol_id, reuse)
@@ -309,10 +322,14 @@ class MLSHAgent(object):
     valid_non_spatial_action = np.zeros([len(rbs), len(actions.FUNCTIONS)], dtype=np.float32)
     non_spatial_action_selected = np.zeros([len(rbs), len(actions.FUNCTIONS)], dtype=np.float32)
 
+    actions_taken_ids = np.zeros([len(rbs)], dtype=np.float32) # only for visualization in tensorboard
+
     for i, [obs, action, next_obs] in enumerate(rbs):
       reward = obs.reward
       act_id = action.function
       act_args = action.arguments
+
+      actions_taken_ids[i] = act_id
 
       value_target[i] = reward + disc * value_target[i-1]
 
@@ -345,7 +362,9 @@ class MLSHAgent(object):
               self.spatial_action_selected: spatial_action_selected[pol_inds],
               self.valid_non_spatial_action: valid_non_spatial_action[pol_inds],
               self.non_spatial_action_selected: non_spatial_action_selected[pol_inds],
-              self.learning_rate: lr}
+              self.learning_rate: lr,
+              self.actions_taken_ids: actions_taken_ids[pol_inds]} # only for visualization in tensorboard
+      print('feeeeed: ', actions_taken_ids[pol_inds])
       _, summary = self.sess.run([self.subpol_train_ops[pol_id], self.subpol_summary_op], feed_dict=feed)
       self.summary_writer.add_summary(summary, cter)
 
