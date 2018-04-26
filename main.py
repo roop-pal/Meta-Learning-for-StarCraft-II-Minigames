@@ -24,7 +24,7 @@ import numpy as np
 COUNTER = 0
 LOCK = threading.Lock()
 FLAGS = flags.FLAGS
-flags.DEFINE_bool("training", True, "Whether to train agents.")
+flags.DEFINE_bool("training", False, "Whether to train agents.")
 flags.DEFINE_bool("continuation", False, "Continuously training.")
 flags.DEFINE_float("learning_rate", 5e-4, "Learning rate for training.")
 flags.DEFINE_float("discount", 0.99, "Discount rate for future rewards.")
@@ -146,7 +146,14 @@ def run_thread(agent, map_name, visualize, mlsh=False):
           score = obs["score_cumulative"][0]
           scores.append(score)
           print('(episode score: {}, mean score: {}, max score: {})\n'.format(score, np.mean(scores[-300:]), np.max(scores)))
-
+      else:
+        # case testing
+        if is_done:
+          obs = recorder[-1].observation
+          score = obs["score_cumulative"][0]
+          scores.append(score)
+          print('(episode score: {}, mean score: {}, max score: {})\n'.format(score, np.mean(scores[-300:]), np.max(scores)))
+          
     if FLAGS.save_replay:
       env.save_replay(agent.name)
 
