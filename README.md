@@ -24,49 +24,9 @@ Our goal is to test different strategies, more or less complex, and compare them
 
 ## Preliminary results
 
-Results for two most difficult minigames (see report for scores on other mingames):
+Results for 5 tractable minigames:
 
-$\usepackage{multirow}$
-
-$\begin{table*}[t]
-  \centering
-  \begin{tabular}{ |c|c|c|c|c|c|c|c|c|c| } 
-  	\cline{4-10}
-    \multicolumn{3}{c|}{} & \multicolumn{7}{c|}{Agent/Algorithm} \\
-    \cline{4-10}
-    \multicolumn{3}{c|}{} & Random & Script & Human & Human  & Q-Learn & \multirow{2}{*}{A3C} & A3C +  \\
-    \multicolumn{3}{c|}{} & Policy & (Specific) & Novice & Master & Table & & MLSH \\
-    \cline{1-10}
-    & \multicolumn{2}{|c|}{Lines of Code} & $<5$ & $\sim 70$ & N/A & N/A& $\sim 20$0 & $\sim 800$ & $\sim 1100$ \\
-    \cline{1-10}
-    \parbox[t]{2mm}{\multirow{10}{*}{\rotatebox[origin=c]{90}{Minigame}}} & \multirow{2}{*}{MoveToBeacon} & Mean & 1 & 24 & 26 & 28 & 2 & 19 & 1 \\  
-    & & Max & 2 & 30 & 28 & 28 & 5 & 31 & 4 \\ 
-    \cline{2-10}
-    & \multirow{2}{*}{CollectMineralShards} & Mean & 17 & 94 & 133 & 177 & 12 & 35 & 6 \\  
-    & & Max & 19 & 97 & 142 & 179 & 38 & 79 & 17 \\ 
-    \cline{2-10}
-    & \multirow{2}{*}{FindAndDefeatZerglings} & Mean & 3 & 6 & 46 & 61 & 7 & 8 & 13 \\ 
-    & & Max & 14 & 40 & 49 & 61 & 14 & 11 & 22 \\ 
-    \cline{2-10}
-  & \multirow{2}{*}{DefeatRoaches} & Mean & 2 & 108 & 41 & 215 & 27 & 61 & 16 \\ 
-    & & Max & 36 & 304 & 81 & 363 & 96 & 297 & 91 \\ 
-    \cline{2-10}
-    & \multirow{2}{*}{DefeatZerglings\&Banelings} & Mean & 21 & 36 & 729 & 727 & 68 & 72 & 45 \\ 
-    & & Max & 67 & 98 & 757 & 848 & 164 & 167 & 118 \\ 
-    \hline
-  \end{tabular}
-  \label{tab:1}
-  \caption{Scores for each agent. For each non-human agent, computed on 300 episodes of testing after 5M game steps of training. The scores for novice and grandmaster human players were gathered by Google DeepMind \cite{vinyals}.}
-\end{table*}$
-
-| Agent                 | DefeatRoaches           | DefeatZerglingsAndBanelings | # lines of code |
-| ----------------------|:-----------------------:| :--------------------------:|----------------:|
-| Random Agent          | mean 2 (max 36)         |  mean 21 (max 67)           | < 5             |
-| Scripted Agent        | mean 108 (max 304)      |  mean 41 (max 81)           | ~ 70            |
-| DeepMind Human Player | mean 41 (max 81)        |  mean 729 (max 757)         | N/A             |
-| Starcraft GrandMaster | mean 215 (max 363)      |  mean 727 (max 848)         | N/A             |
-| Simple Q-Learning     | mean 29 (max 96)        |  mean 68 (max 164)          | ~ 200           |
-| A3C with AtariNet     | mean 61 (max 297)       |  mean 72 (max 167)          | ~ 400           |
+![alt text](./doc/table.PNG "Results Table")
 
 We have successfully trained an A3C agent with AtariNet on 5 of the 7 minigames: MoveToBeacon, CollectMineralShards, FindAndDefeatZerglings, DefeatRoaches and DefeatZerglingsAndBanelings. We have also tried simpler approach: we wrote scripted bots to solve these games, and implemented a simple Q-Learning agent with simpler action and state spaces.
 
@@ -86,10 +46,14 @@ The videos below show (1) our A3C agent trained with Atarinet architecture, on 2
          alt="Trained A3C Atarinet agent playing DefeatRoaches"
          width="240" height="180" border="10" />
   </a>
+  
+   <a href="https://youtu.be/s5wGk7tql0c"
+     target="_blank">
+     <img src="https://img.youtube.com/vi/s5wGk7tql0c/0.jpg"
+         alt="Trained A3C Atarinet agent playing DefeatRoaches"
+         width="240" height="180" border="10" />
+  </a>
 </div>
-
-<iframe width="560" height="315" src="https://www.youtube.com/embed/s5wGk7tql0c" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
-
 
 ## Getting started
 
