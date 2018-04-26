@@ -55,6 +55,7 @@ The videos below show (1) our A3C agent trained with Atarinet architecture, on 2
   </a>
 </div>
 
+<iframe width="560" height="315" src="https://www.youtube.com/embed/s5wGk7tql0c" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
 
 
 ## Getting started
