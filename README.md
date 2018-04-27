@@ -26,7 +26,7 @@ The main contribution is an implementation of a MLSH (Meta-Learning Shared Hiera
 
 ![alt text](./doc/table.PNG "Results Table")
 
-We trained an A3C agent with AtariNet on 5 of the 7 minigames: MoveToBeacon, CollectMineralShards, FindAndDefeatZerglings, DefeatRoaches and DefeatZerglingsAndBanelings. We also tried a simpler approach: we wrote scripted bots to solve these games, and implemented a simple Q-Learning agent with simpler action and state spaces. We implemented a MLSH agent from scratch.
+We trained our agents on 5 of the 7 minigames: MoveToBeacon, CollectMineralShards, FindAndDefeatZerglings, DefeatRoaches and DefeatZerglingsAndBanelings. We also tried a simpler approach: we wrote scripted bots to solve these games, and implemented a simple Q-Learning agent with simpler action and state spaces. We implemented our MLSH algorithm from scratch as an adaptation of the A3C using an AtariNet architecture produced by [Xiaowei Hu](https://github.com/xhujoy). The results presented in the table above describe test results after 5 million game steps of training.
 
 The videos below show (1) our A3C agent trained with Atarinet architecture, on 25,000 episodes, playing DefeatRoaches, (2) our simple Q-Learning agent trained on MoveToBeacon, and (3) our MLSH agent trained on 4 minigames, playing DefeatRoaches.
 
