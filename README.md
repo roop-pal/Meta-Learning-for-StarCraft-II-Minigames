@@ -30,7 +30,7 @@ Results for 5 tractable minigames:
 
 We have successfully trained an A3C agent with AtariNet on 5 of the 7 minigames: MoveToBeacon, CollectMineralShards, FindAndDefeatZerglings, DefeatRoaches and DefeatZerglingsAndBanelings. We have also tried simpler approach: we wrote scripted bots to solve these games, and implemented a simple Q-Learning agent with simpler action and state spaces. We implemented a MLSH agent from scratch.
 
-The videos below show (1) our A3C agent trained with Atarinet architecture, on 25,000 episodes, playing DefeatRoaches, (2) our simple Q-Learning agent trained on MoveToBeacon, and (3) our MLSH agent trained on 4 minigames, playing DefeatRoaches. We find that the MLSH scores well to the previously unseen DefeatZerglingsAndBanelings minigame, though it unsurprisingly does not achieve the score of an agent trained on that single minigame. These results show the capabilities of the agent to generalize across minigames. Such an algorithm can be very powerful in developing a strong reinforcement learning agent playing the full game.
+The videos below show (1) our A3C agent trained with Atarinet architecture, on 25,000 episodes, playing DefeatRoaches, (2) our simple Q-Learning agent trained on MoveToBeacon, and (3) our MLSH agent trained on 4 minigames, playing DefeatRoaches.
 
 <div align="center">
   
@@ -54,6 +54,8 @@ The videos below show (1) our A3C agent trained with Atarinet architecture, on 2
   </a>
   
 </div>
+
+We find that the MLSH scores well to the previously unseen DefeatZerglingsAndBanelings minigame, though it unsurprisingly does not achieve the score of an agent trained on that single minigame. These results show the capabilities of the agent to generalize across minigames. Such an algorithm can be very powerful in developing a strong reinforcement learning agent playing the full game.
 
 ## Getting started
 
@@ -83,11 +85,13 @@ $ python -m main --agent=rl_agents.qtable_agent.QTableAgent --map=DefeatRoaches
 
 If no agent is specified, the A3C agent is run by default.
 
-The A3C agent has additionnal flags, including *--training*. Indeed, it is posible to run an agent already trained. To do so, download the pretrained model from [here](https://drive.google.com/open?id=0B6TLO16TqWxpUjRsWWdsSEU3dFE), which was trained by [Xiaowei Hu](github.com/xjujoy) on three maps including DefeatRoaches, and unzip it in *./snapshot*. Then run:
-
 ```
-$ python -m main --map=DefeatRoaches --training=False   
+$ python -m main --map=DefeatRoaches
 ```
 
 ## References
+1. [O. Vinyals, T. Ewalds, S. Bartunov, P. Georgiev. et al. StarCraft II: A New Challenge for Reinforcement Learning. \textit{Google DeepMind}, 2017.](https://deepmind.com/documents/110/sc2le.pdf)
+2. [V. Mnih, A. Badia, M. Mirza1, A. Graves, T. Harley, T. Lillicrap, D. Silver, K. Kavukcuoglu. \textit{Asynchronous Methods for Deep Reinforcement Learning}, 2016.](https://arxiv.org/pdf/1602.01783.pdf)
+3. [K. Frans, J. Ho, X. Chen, P. Abbeel, J. Schulman. Meta Learning Shared Hierarchies. \textit{arXiv preprint arXiv:1710.09767v2}, 2017.](https://arxiv.org/pdf/1710.09767.pdf)
+
 
