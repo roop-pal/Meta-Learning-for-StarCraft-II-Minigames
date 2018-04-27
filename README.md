@@ -22,13 +22,11 @@ We then made a review of the current architectures used to solve these minigames
 
 The main contribution is an implementation of a MLSH (Meta-Learning Shared Hierarchies) agent, which can be trained on multiple minigames, sharing sub-policies. A master policy selects which sub-policy to use given observations. This allows the agent to generalize to previously unseen minigames by just training a master policy. A more detailed explanation of the algorithm can be found in the [paper](#MLSH).
 
-## Preliminary results
-
-Results for 5 tractable minigames:
+## Results
 
 ![alt text](./doc/table.PNG "Results Table")
 
-We have successfully trained an A3C agent with AtariNet on 5 of the 7 minigames: MoveToBeacon, CollectMineralShards, FindAndDefeatZerglings, DefeatRoaches and DefeatZerglingsAndBanelings. We have also tried simpler approach: we wrote scripted bots to solve these games, and implemented a simple Q-Learning agent with simpler action and state spaces. We implemented a MLSH agent from scratch.
+We trained an A3C agent with AtariNet on 5 of the 7 minigames: MoveToBeacon, CollectMineralShards, FindAndDefeatZerglings, DefeatRoaches and DefeatZerglingsAndBanelings. We also tried a simpler approach: we wrote scripted bots to solve these games, and implemented a simple Q-Learning agent with simpler action and state spaces. We implemented a MLSH agent from scratch.
 
 The videos below show (1) our A3C agent trained with Atarinet architecture, on 25,000 episodes, playing DefeatRoaches, (2) our simple Q-Learning agent trained on MoveToBeacon, and (3) our MLSH agent trained on 4 minigames, playing DefeatRoaches.
 
