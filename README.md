@@ -20,9 +20,7 @@ We then implemented a "smarter" baseline agent using a Q-table. For this to be p
 
 We then made a review of the current architectures used to solve these minigames. In their paper, DeepMind use the A3C algorithm (Asynchronous Advantage Actor Critic) with several architectures (*Atari-Net*, *FullyConv*, *FullyConv LSTM*) that are described in [section 4.3](https://deepmind.com/documents/110/sc2le.pdf) of the SC2LE paper. DeepMind did not include open source implementations of the architectures used in their paper, yet a few research teams shared implementations, and our work relies on theirs. Useful github resources can be found in the *readme* of the *docs* folder of this repo. All agents based on different reinforcement learning ideas (MLSH, A3C) will be in the *rl_agents* folder. Our A3C agent is mainly based on the work of [Xiaowei Hu](https://github.com/xhujoy) who provided an implementation of A3C for pysc2.
 
-The main contribution is an implementation of a MLSH (Meta-Learning Shared Hierarchies) agent, which can be trained on multiple minigames, sharing sub-policies. A master policy selects which sub-policy to use given observations. This allows the agent to generalize to previously unseen minigames by just training a master policy. 
-
-![alt text](https://blog.openai.com/content/images/2017/10/MLSH.gif "MLSH")
+The main contribution is an implementation of a MLSH (Meta-Learning Shared Hierarchies) agent, which can be trained on multiple minigames, sharing sub-policies. A master policy selects which sub-policy to use given observations. This allows the agent to generalize to previously unseen minigames by just training a master policy. A more detailed explanation of the algorithm can be found [here](https://arxiv.org/abs/1710.09767).
 
 ## Preliminary results
 
@@ -35,6 +33,7 @@ We have successfully trained an A3C agent with AtariNet on 5 of the 7 minigames:
 The videos below show (1) our A3C agent trained with Atarinet architecture, on 25,000 episodes, playing DefeatRoaches, (2) our simple Q-Learning agent trained on MoveToBeacon, and (3) our MLSH agent trained on 4 minigames, playing DefeatRoaches. We find that the MLSH scores well to the previously unseen DefeatZerglingsAndBanelings minigame, though it unsurprisingly does not achieve the score of an agent trained on that single minigame. These results show the capabilities of the agent to generalize across minigames. Such an algorithm can be very powerful in developing a strong reinforcement learning agent playing the full game.
 
 <div align="center">
+  
   <a href="https://youtu.be/dEAh0g9SVS0"
      target="_blank">
     <img src="https://img.youtube.com/vi/dEAh0g9SVS0/0.jpg"
@@ -53,6 +52,7 @@ The videos below show (1) our A3C agent trained with Atarinet architecture, on 2
          alt="Trained MLSH Atarinet agent playing DefeatRoaches"
          width="240" height="180" border="10" />
   </a>
+  
 </div>
 
 ## Getting started
@@ -89,10 +89,5 @@ The A3C agent has additionnal flags, including *--training*. Indeed, it is posib
 $ python -m main --map=DefeatRoaches --training=False   
 ```
 
-## Notes
-
-**This is a preliminary version of our project readme, which will be updated to contain descriptions of all the methods used, a full description of the problem setting (size of the action-state space, assumptions made...) and of course our results.**
-
 ## References
 
-This section will be updated at the end of our project to contain a full list of other research teams' work that we'll have used to complete our work.
