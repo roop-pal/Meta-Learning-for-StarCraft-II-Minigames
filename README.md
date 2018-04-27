@@ -18,7 +18,8 @@ We first implemented and tested "baseline" agents that will let us evaluate more
 
 We then implemented a "smarter" baseline agent using a Q-table. For this to be possible, we reduced the action space to a few basic actions (mainly selecting units and attacking points), and also reduced the state space (a 4 by 4 grid indicating where the roaches are along with the number of marines left).
 
-We then made a review of the current architectures used to solve these minigames. In their paper, DeepMind use the A3C algorithm (Asynchronous Advantage Actor Critic) with several architectures (*Atari-Net*, *FullyConv*, *FullyConv LSTM*) that are described in [section 4.3](https://deepmind.com/documents/110/sc2le.pdf) of the SC2LE paper. DeepMind did not include open source implementations of the architectures used in their paper, yet a few research teams shared implementations, and our work relies on theirs. Useful github resources can be found in the *readme* of the *docs* folder of this repo. All agents based on different reinforcement learning ideas (MLSH, A3C) will be in the *rl_agents* folder. Our A3C agent is mainly based on the work of [Xiaowei Hu](https://github.com/xhujoy) who provided an implementation of A3C for pysc2.
+We then made a review of the current architectures used to solve these minigames. In their paper, DeepMind use the A3C algorithm (Asynchronous Advantage Actor Critic) with several architectures (*Atari-Net*, *FullyConv*, *FullyConv LSTM*) that are described in [section 4.3](https://deepmind.com/documents/110/sc2le.pdf) of the SC2LE paper. DeepMind did not include open source implementations of the architectures used in their paper, yet a few research teams shared implementations, and our work relies on theirs. Useful github resources can be found in the *readme* of the *docs* folder of this repo. All agents based on different reinforcement learning ideas (MLSH, A3C) will be in the *rl_agents* folder. Our A3C agent is mainly based on the work of [
+Hu](https://github.com/xhujoy) who provided an implementation of A3C for pysc2.
 
 The main contribution is an implementation of a MLSH (Meta-Learning Shared Hierarchies) agent, which can be trained on multiple minigames, sharing sub-policies. A master policy selects which sub-policy to use given observations. This allows the agent to generalize to previously unseen minigames by just training a master policy. A more detailed explanation of the algorithm can be found in the [paper](#MLSH).
 
@@ -75,20 +76,40 @@ We are currently training our agents on a google cloud instance with a 4 core CP
 
 ## Running agents
 
-To run an agent, instead of calling pysc2 directly as in the instructions from DeepMind, run the main.py script of our project, with the agent class passed as a flag. For example, to run the q table agent:
+To run an agent, instead of calling pysc2 directly as in the instructions from DeepMind, run the main.py script of our project, with the agent class passed as a flag. For example, to run the q table agent or the MLSH agent:
 
 ```
 $ python -m main --agent=rl_agents.qtable_agent.QTableAgent --map=DefeatRoaches
+$ python -m main --agent=rl_agents.mlsh_agent.MLSHAgent --num_subpol=3 --subpol_steps=5 --training
 ```
 
-If no agent is specified, the A3C agent is run by default.
+If no agent is specified, the A3C agent is run by default:
 
 ```
 $ python -m main --map=DefeatRoaches
 ```
+A full list of the flags that can be used along with their descriptions is available in the main.py of script. The most important and useful flags are:
+
+- map: the map on which to run the agent. Should not be used with MLSHAgent which uses a list of maps to use, since MLSH trains on multiple maps.
+- max_agent_steps: the number of steps to perform per episode (after which, episode is stopped). This is used to speed up training by focusing on early states of episodes
+- parallel: number of threads to run, defaults at 1.
+
+Flags specific to the MLSHAgent:
+
+- num_subpol: number of subpolicies to train and use
+- subpol_steps: periodicity of subpolicy choices done by the master policy (in game steps)
+- warmup_len: number of episodes during which only the master subpolicy is trained
+- join_len: number of episodes during which both master and subpolicies are trained
+
+## Acknowledgements
+
+Our code is based on the work of Xiaowei Hu (xhujoy) who shared his implementation of A3C for pysc2.
+
+Special thanks to Professor Iddo Drori, our instructor at Columbia University, as well as Niels Justesen for their expertise and guidance.
 
 ## References
 1. [O. Vinyals, T. Ewalds, S. Bartunov, P. Georgiev. et al. StarCraft II: A New Challenge for Reinforcement Learning. Google DeepMind, 2017.](https://deepmind.com/documents/110/sc2le.pdf)
 2. [V. Mnih, A. Badia, M. Mirza1, A. Graves, T. Harley, T. Lillicrap, D. Silver, K. Kavukcuoglu. Asynchronous Methods for Deep Reinforcement Learning, 2016.](https://arxiv.org/pdf/1602.01783.pdf)
 3. [K. Frans, J. Ho, X. Chen, P. Abbeel, J. Schulman. Meta Learning Shared Hierarchies. arXiv preprint arXiv:1710.09767v2, 2017.](https://arxiv.org/pdf/1710.09767.pdf)<a name="MLSH"></a>
 4. [Xiaowei Hu's PySC2 Agents](https://github.com/xhujoy/pysc2-agents)
+
