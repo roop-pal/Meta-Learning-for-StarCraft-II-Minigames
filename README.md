@@ -8,7 +8,7 @@ We started our project by partially reproducing the results obtained by DeepMind
 
 Deep reinforcement learning has made significant strides in recent years, with results achieved in board games such as Go. However, there are a number of obstacles preventing such methods from being applied to more real-world situations. For instance, more realistic strategic situations often involve much larger spaces of possible states and actions, an environment state which is only partially observed, multiple agents to control, and a necessity for long-term strategies involving not hundreds but thousands or tens of thousands of steps. It has thus been suggested that creating learning algorithms which outperform humans in playing real-time strategy (RTS) video games would signal a more generalizable result about the ability of a computer to make decisions in the real world.
 
-Of the current RTS games on the market, StarCraft II is one of the most popular. The recent release by Google’s DeepMind of SC2LE (StarCraft II Learning Environment) presents an interface with which to train deep reinforcement learners to compete in the game, both in smaller “minigames” and on full matches. The SC2LE environment is described on [DeepMind's github repo](https://github.com/deepmind/pysc2) 
+Of the current RTS games on the market, StarCraft II is one of the most popular. The recent release by Google’s DeepMind of SC2LE (StarCraft II Learning Environment) presents an interface with which to train deep reinforcement learners to compete in the game, both in smaller “minigames” and on full matches. The SC2LE environment is described on [DeepMind's github repo.](https://github.com/deepmind/pysc2) 
 
 In this project, we focus on solving a variety of minigames, which capture various aspects of the full StarCraft II game. These minigames focus on tasks such as gathering resources, moving to waypoints, finding enemies, or skirmishing with units. In each case the player is given a homogeneous set of units (marines), and a reward is based off the minigame (+5 for defeating each enemy roach in DefeatRoaches, for example).
 
@@ -92,5 +92,4 @@ $ python -m main --map=DefeatRoaches
 ## References
 1. [O. Vinyals, T. Ewalds, S. Bartunov, P. Georgiev. et al. StarCraft II: A New Challenge for Reinforcement Learning. Google DeepMind, 2017.](https://deepmind.com/documents/110/sc2le.pdf)
 2. [V. Mnih, A. Badia, M. Mirza1, A. Graves, T. Harley, T. Lillicrap, D. Silver, K. Kavukcuoglu. Asynchronous Methods for Deep Reinforcement Learning, 2016.](https://arxiv.org/pdf/1602.01783.pdf)
-<a name="MLSH></a>
-3. [K. Frans, J. Ho, X. Chen, P. Abbeel, J. Schulman. Meta Learning Shared Hierarchies. arXiv preprint arXiv:1710.09767v2, 2017.](https://arxiv.org/pdf/1710.09767.pdf)
+3. [K. Frans, J. Ho, X. Chen, P. Abbeel, J. Schulman. Meta Learning Shared Hierarchies. arXiv preprint arXiv:1710.09767v2, 2017.](https://arxiv.org/pdf/1710.09767.pdf)<a name="MLSH"></a>
