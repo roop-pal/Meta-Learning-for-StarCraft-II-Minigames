@@ -1,6 +1,6 @@
 # Deep-Reinforcement-Learning-for-StarCraft-II-Battles
 
-We intend to develop various reinforcement learning methods for five SC2LE minigames involving moving units to target locations as well as battles between groups of agents. This project was developed for the course COMS 4995 Deep Learning taught by Prof. Iddo Drori at Columbia University, in Spring 2018. This work is done by Connor Hargus, Jerome Kafrouni and Roop Pal who have contributed equally.
+For this project we developed various reinforcement learning methods for five SC2LE minigames involving moving units to target locations as well as battles between groups of agents. This project was developed for the course COMS 4995 Deep Learning taught by Prof. Iddo Drori at Columbia University, in Spring 2018. This work is done by Connor Hargus, Jerome Kafrouni and Roop Pal who have contributed equally.
 
 We started our project by partially reproducing the results obtained by DeepMind in their SC2LE publication, as shown by the table above. Then, we implemented a meta-learning strategy showing how an agent's skills can be transferred between minigames.
 
@@ -14,7 +14,7 @@ In this project, we focus on solving a variety of minigames, which capture vario
 
 ## Our work
 
-We first implement and used"baseline" agents that will let us evaluate more complex reinforcement learning agents. We compare our results with "random" agents that choose any random action at each step, and simple scripted agents that intend to solve the minigame with a simple deterministic policy. The scripted agents can be found in the folder *scripted_agents*.
+We first implemented and tested "baseline" agents that will let us evaluate more complex reinforcement learning agents. We compare our results with "random" agents that choose any random action at each step, and simple scripted agents that intend to solve the minigame with a simple deterministic policy. The scripted agents can be found in the folder *scripted_agents*.
 
 We then implemented a "smarter" baseline agent using a Q-table. For this to be possible, we reduced the action space to a few basic actions (mainly selecting units and attacking points), and also reduced the state space (a 4 by 4 grid indicating where the roaches are along with the number of marines left).
 
@@ -53,7 +53,7 @@ The videos below show (1) our A3C agent trained with Atarinet architecture, on 2
   
 </div>
 
-We find that the MLSH scores well to the previously unseen DefeatZerglingsAndBanelings minigame, though it unsurprisingly does not achieve the score of an agent trained on that single minigame. These results show the capabilities of the agent to generalize across minigames. Such an algorithm can be very powerful in developing a strong reinforcement learning agent playing the full game.
+We find that the MLSH scores reasonably well to the previously unseen DefeatZerglingsAndBanelings minigame, though it unsurprisingly does not achieve the score of an agent trained on that single minigame. Interestingly, it actually surpassed A3C's performance on the FindAndDefeatZerglings minigame, perhaps due to similarities between this minigame and targeting locations/units in other minigames. The performance on DefeatZerglingsAndBanelings results show the capabilities of the agent to generalize across minigames. We believe that such an algorithm, with properly tuned hyper-parameters and stronger computational power, could in the future be very powerful in developing a strong reinforcement learning agent playing the full game.
 
 ## Getting started
 
