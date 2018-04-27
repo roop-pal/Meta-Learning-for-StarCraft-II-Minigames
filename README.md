@@ -4,6 +4,8 @@ For this project we developed various reinforcement learning methods for five SC
 
 We started our project by partially reproducing the results obtained by DeepMind in their SC2LE publication, as shown by the table above. Then, we implemented a meta-learning strategy showing how an agent's skills can be transferred between minigames.
 
+A draft of our paper can be found [here.](./meta-learning-starcraft.pdf)
+
 ## Introduction
 
 Deep reinforcement learning has made significant strides in recent years, with results achieved in board games such as Go. However, there are a number of obstacles preventing such methods from being applied to more real-world situations. For instance, more realistic strategic situations often involve much larger spaces of possible states and actions, an environment state which is only partially observed, multiple agents to control, and a necessity for long-term strategies involving not hundreds but thousands or tens of thousands of steps. It has thus been suggested that creating learning algorithms which outperform humans in playing real-time strategy (RTS) video games would signal a more generalizable result about the ability of a computer to make decisions in the real world.
