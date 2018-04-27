@@ -20,7 +20,7 @@ We then implemented a "smarter" baseline agent using a Q-table. For this to be p
 
 We then made a review of the current architectures used to solve these minigames. In their paper, DeepMind use the A3C algorithm (Asynchronous Advantage Actor Critic) with several architectures (*Atari-Net*, *FullyConv*, *FullyConv LSTM*) that are described in [section 4.3](https://deepmind.com/documents/110/sc2le.pdf) of the SC2LE paper. DeepMind did not include open source implementations of the architectures used in their paper, yet a few research teams shared implementations, and our work relies on theirs. Useful github resources can be found in the *readme* of the *docs* folder of this repo. All agents based on different reinforcement learning ideas (MLSH, A3C) will be in the *rl_agents* folder. Our A3C agent is mainly based on the work of [Xiaowei Hu](https://github.com/xhujoy) who provided an implementation of A3C for pysc2.
 
-The main contribution is an implementation of a MLSH (Meta-Learning Shared Hierarchies) agent, which can be trained on multiple minigames, sharing sub-policies. A master policy selects which sub-policy to use given observations. This allows the agent to generalize to previously unseen minigames by just training a master policy. A more detailed explanation of the algorithm can be found [here](https://arxiv.org/abs/1710.09767).
+The main contribution is an implementation of a MLSH (Meta-Learning Shared Hierarchies) agent, which can be trained on multiple minigames, sharing sub-policies. A master policy selects which sub-policy to use given observations. This allows the agent to generalize to previously unseen minigames by just training a master policy. A more detailed explanation of the algorithm can be found in the [paper](#MLSH).
 
 ## Preliminary results
 
@@ -90,8 +90,7 @@ $ python -m main --map=DefeatRoaches
 ```
 
 ## References
-1. [O. Vinyals, T. Ewalds, S. Bartunov, P. Georgiev. et al. StarCraft II: A New Challenge for Reinforcement Learning. \textit{Google DeepMind}, 2017.](https://deepmind.com/documents/110/sc2le.pdf)
-2. [V. Mnih, A. Badia, M. Mirza1, A. Graves, T. Harley, T. Lillicrap, D. Silver, K. Kavukcuoglu. \textit{Asynchronous Methods for Deep Reinforcement Learning}, 2016.](https://arxiv.org/pdf/1602.01783.pdf)
-3. [K. Frans, J. Ho, X. Chen, P. Abbeel, J. Schulman. Meta Learning Shared Hierarchies. \textit{arXiv preprint arXiv:1710.09767v2}, 2017.](https://arxiv.org/pdf/1710.09767.pdf)
-
-
+1. [O. Vinyals, T. Ewalds, S. Bartunov, P. Georgiev. et al. StarCraft II: A New Challenge for Reinforcement Learning. Google DeepMind, 2017.](https://deepmind.com/documents/110/sc2le.pdf)
+2. [V. Mnih, A. Badia, M. Mirza1, A. Graves, T. Harley, T. Lillicrap, D. Silver, K. Kavukcuoglu. Asynchronous Methods for Deep Reinforcement Learning, 2016.](https://arxiv.org/pdf/1602.01783.pdf)
+<a name="MLSH></a>
+3. [K. Frans, J. Ho, X. Chen, P. Abbeel, J. Schulman. Meta Learning Shared Hierarchies. arXiv preprint arXiv:1710.09767v2, 2017.](https://arxiv.org/pdf/1710.09767.pdf)
