@@ -1,6 +1,6 @@
-# Deep-Reinforcement-Learning-for-StarCraft-II-Battles
+# Meta-Learning for StarCraft II Minigame Strategy
 
-For this project we developed various reinforcement learning methods for five SC2LE minigames involving moving units to target locations as well as battles between groups of agents. This project was developed for the course COMS 4995 Deep Learning taught by Prof. Iddo Drori at Columbia University, in Spring 2018. This work is done by Connor Hargus, Jerome Kafrouni and Roop Pal who have contributed equally.
+For this project we implemented and tested deep reinforcement learning methods for five SC2LE minigames involving moving units to target locations as well as battles between groups of agents. This project was developed for the course COMS 4995 Deep Learning taught by Prof. Iddo Drori at Columbia University, in Spring 2018. This work is done by Connor Hargus, Jerome Kafrouni and Roop Pal who have contributed equally.
 
 We started our project by partially reproducing the results obtained by DeepMind in their SC2LE publication, as shown by the table above. Then, we implemented a meta-learning strategy showing how an agent's skills can be transferred between minigames.
 
