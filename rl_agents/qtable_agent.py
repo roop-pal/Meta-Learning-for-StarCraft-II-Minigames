@@ -12,6 +12,7 @@
 import random
 import math
 import os.path
+import logging
 from time import sleep
 
 import numpy as np
@@ -20,6 +21,8 @@ import pandas as pd
 from pysc2.agents import base_agent
 from pysc2.lib import actions
 from pysc2.lib import features
+
+logger = logging.getLogger('starcraft_agent')
 
 # Give names to common PySC2 functions and unit IDs for simplicity in later code.
 _NO_OP = actions.FUNCTIONS.no_op.id
@@ -163,12 +166,12 @@ class QTableAgent(base_agent.BaseAgent):
 
             score = obs.observation['score_cumulative'][0]
             self.scores.append(score)
-            print('Avg Score (prev. 500): ' + str(sum(self.scores[-500:])/min(len(self.scores), 500)))
-            print('Max score (prev. 500): ' + str(max(self.scores[-500:])))
+            logger.info('Avg score (prev. 500): %s', sum(self.scores[-500:])/min(len(self.scores), 500))
+            logger.info('Max score (prev. 500): %s', max(self.scores[-500:]))
 
             self.stepcounts.append(self.stepcount)
-            print('Game steps: ' + str(self.stepcount))
-            print('Average Game steps: ' + str(sum(self.stepcounts[-500:])/min(len(self.stepcounts), 500)))
+            logger.info('Game steps: %s', self.stepcount)
+            logger.info('Average Game steps: %s', sum(self.stepcounts[-500:])/min(len(self.stepcounts), 500))
 
             self.qlearn.learn(str(self.previous_state), self.previous_action, reward, 'terminal')
 
@@ -212,7 +215,7 @@ class QTableAgent(base_agent.BaseAgent):
             for i in range(0, 16):
                 current_state[i + 1] = hot_squares[i]
 
-            # print("Current state: ", current_state)
+                logger.debug('Current state: %s', current_state)
 
             reward = obs.reward
 

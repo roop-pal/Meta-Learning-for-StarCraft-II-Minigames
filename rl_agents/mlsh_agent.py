@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import logging
 import numpy as np
 import math
 import tensorflow as tf
@@ -13,6 +14,7 @@ from pysc2.lib import features
 from rl_agents.mlsh_network import build_net
 import utils as U
 
+logger = logging.getLogger('starcraft_agent')
 
 class MLSHAgent(object):
   """An agent specifically for solving the mini-game maps."""
@@ -442,8 +444,9 @@ class MLSHAgent(object):
       self.summary_writer.add_summary(test_score_summary)
       return
 
-    print("Total game steps: " + str(self.count_steps))
-    print("Thread: " + str(self.num_thread))
+    # print("Total game steps: " + str(self.count_steps))
+    # print("Thread: " + str(self.num_thread))
+    logger.info('[Thread %s] Total game steps: %s', self.num_thread, self.count_steps)
 
     # Reverse the replay buffer in order to calculate values:
     rbs.reverse()

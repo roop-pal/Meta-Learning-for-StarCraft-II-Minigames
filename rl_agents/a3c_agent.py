@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import logging
 import numpy as np
 import tensorflow as tf
 from pysc2.lib import actions
@@ -12,6 +13,7 @@ from pysc2.lib import features
 from rl_agents.network import build_net
 import utils as U
 
+logger = logging.getLogger('starcraft_agent')
 
 class A3CAgent(object):
   """An agent specifically for solving the mini-game maps."""
@@ -142,9 +144,6 @@ class A3CAgent(object):
     target = np.argmax(spatial_action)
     target = [int(target // self.ssize), int(target % self.ssize)]
 
-    if False:
-      print(actions.FUNCTIONS[act_id].name, target)
-
     # Epsilon greedy exploration
     if self.training and np.random.rand() < self.epsilon[0]:
       act_id = np.random.choice(valid_actions)
@@ -172,12 +171,13 @@ class A3CAgent(object):
     # Print out score on a test run through a full episode, don't update network on test run
     if self.test_run and obs.last():
       self.test_scores.append(obs.observation['score_cumulative'][0])
-      print("TEST SCORE: " + str(self.test_scores[-1]))
+      # print("TEST SCORE: " + str(self.test_scores[-1]))
+
       return
     else:
       train_score = obs.observation['score_cumulative'][0]
 
-    print("Total game steps: " + str(self.count_steps))
+    logger.info('Total game steps: %s', self.count_steps)
     self.count_steps += len(rbs)
 
     if obs.last():

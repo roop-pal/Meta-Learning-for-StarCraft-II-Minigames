@@ -5,6 +5,9 @@ from __future__ import print_function
 import tensorflow as tf
 import tensorflow.contrib.layers as layers
 
+import logging
+
+logger = logging.getLogger('starcraft_agent')
 
 def build_net(minimap, screen, info, msize, ssize, num_action, ntype, num_subpol, reuse, num_thread):
   if ntype == 'atari':
@@ -110,12 +113,12 @@ def build_atari(minimap, screen, info, msize, ssize, num_action, num_subpol, reu
                                         scope='subpol_choice_'+str(num_thread))
 
   # Get the variables corresponding to the master policy layers above, used for resetting master policy
-  print("Master variables for thread " + str(num_thread) + ":")
+  logger.debug('[Thread %s] Master variables:', num_thread)
   master_vars = []
   for var in tf.trainable_variables():
       if 'master_value_'+str(num_thread) in var.name or 'subpol_choice_'+str(num_thread) in var.name:
         master_vars.append(var)
-        print("Variable: ", var.name)
+        logger.debug('[Thread %s] Variable: %s', num_thread, var.name)
 
   return spatial_actions, non_spatial_actions, value, master_value, subpol_choice, master_vars
 

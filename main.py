@@ -7,6 +7,7 @@ import sys
 import time
 import importlib
 import threading
+import logging
 
 from absl import app
 from absl import flags
@@ -85,6 +86,23 @@ if not os.path.exists(SNAPSHOT):
 
 MLSH_TRAIN_MAPS = ["MoveToBeacon", "CollectMineralShards", "DefeatRoaches", "FindAndDefeatZerglings"]
 
+logger = logging.getLogger('starcraft_agent')
+logger.setLevel(logging.DEBUG)
+# create file handler which logs even debug messages
+fh = logging.FileHandler(LOG + '/main.log')
+fh.setLevel(logging.DEBUG)
+# create console handler with a higher log level
+ch = logging.StreamHandler()
+ch.setLevel(logging.ERROR)
+# create formatter and add it to the handlers
+
+formatter = logging.Formatter('[%(asctime)s %(levelname)s]\t %(message)s')
+fh.setFormatter(formatter)
+ch.setFormatter(formatter)
+# add the handlers to the logger
+logger.addHandler(fh)
+logger.addHandler(ch)
+
 def pysc2_run_thread(agent_cls, map_name, visualize):
   """Original version of run_thread used for most agents, from pysc2.bin.agent"""
   with sc2_env.SC2Env(
@@ -140,12 +158,13 @@ def run_thread(agent, map_name, visualize, mlsh=False):
             break
           if COUNTER % 100 == 0:
             time_elapsed = round((time.time() - init_time) / 60, 2) # in minutes
-            print('Total time elapsed: {} minutes, Average time per episode: {}'.format(time_elapsed, round(time_elapsed/COUNTER, 2)))
+            logger.info('Total time elapsed: %s minutes, Average time per episode: %s', 
+                         time_elapsed, round(time_elapsed/COUNTER, 2))
       if is_done:
         obs = recorder[-1].observation
         score = obs["score_cumulative"][0]
         scores.append(score)
-        print('(episode score: {}, mean score: {}, max score: {})\n'.format(score, np.mean(scores[-300:]), np.max(scores)))
+        logger.info('Episode score: %s, mean score: %s, max score: %s', score, np.mean(scores[-300:]), np.max(scores))
 
     if FLAGS.save_replay:
       env.save_replay(agent.name)
@@ -157,11 +176,13 @@ def _main(unused_argv):
   stopwatch.sw.trace = FLAGS.trace
 
   maps.get(FLAGS.map)  # Assert the map exists.
-
+  logger.info('Launching main script')
   # Setup agents
   agent_module, agent_name = FLAGS.agent.rsplit(".", 1)
   agent_cls = getattr(importlib.import_module(agent_module), agent_name)
 
+  logger.info('Creating %s agents of type %s', PARALLEL, agent_name)
+  
   if agent_name == "A3CAgent" or agent_name == "MLSHAgent":
     # these agents cannot be initiated similarly to classic agents
 
@@ -181,6 +202,7 @@ def _main(unused_argv):
     config.gpu_options.allow_growth = True
     sess = tf.Session(config=config)
 
+    # setup tensorflow logs
     summary_writer = tf.summary.FileWriter(LOG)
     for i in range(PARALLEL):
       agents[i].setup(sess, summary_writer)
@@ -190,6 +212,7 @@ def _main(unused_argv):
     if not FLAGS.training or FLAGS.continuation:
       global COUNTER
       COUNTER = agent.load_model(SNAPSHOT)
+      logger.info('Loaded model, starting from step %s', COUNTER)
 
 
     # Run threads
@@ -200,7 +223,7 @@ def _main(unused_argv):
       else:  # i.e. MLSHAgent
         # Create agents on different minigames for each thread
         minigame = MLSH_TRAIN_MAPS[i % len(MLSH_TRAIN_MAPS)]
-        print("\n Minigame for thread " + str(i + 1) + ": " + minigame + "\n")
+        logger.info("[Thread %s] Minigame: ", minigame)
         t = threading.Thread(target=run_thread, args=(agents[i], minigame, False, mlsh))
 
       threads.append(t)
@@ -212,9 +235,10 @@ def _main(unused_argv):
       run_thread(agents[-1], FLAGS.map, FLAGS.render)
     else: # i.e. MLSHAgent
       minigame = MLSH_TRAIN_MAPS[(len(agents) - 1) % len(MLSH_TRAIN_MAPS)]
-      print("\n Minigame for thread " + str(len(agents)) + ": " + minigame + "\n")
+      logger.info("[Main thread] Minigame: %s", minigame)
       run_thread(agents[-1], minigame, FLAGS.render, mlsh=mlsh)
 
+    logger.info('All threads created')
     for t in threads:
       t.join()
 
@@ -237,6 +261,7 @@ def _main(unused_argv):
     if FLAGS.profile:
       print(stopwatch.sw)
 
+    logger.info('All threads created')
 
 if __name__ == "__main__":
   app.run(_main)

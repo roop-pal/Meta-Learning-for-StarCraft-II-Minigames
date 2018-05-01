@@ -3,7 +3,9 @@ from __future__ import division
 from __future__ import print_function
 
 import time
+import logging
 
+logger = logging.getLogger('starcraft_agent')
 
 def run_loop(agents, env, max_frames=0, mlsh=False, warmup=2, joint=8):
   """A run loop to have agents and an environment interact."""
@@ -31,22 +33,22 @@ def run_loop(agents, env, max_frames=0, mlsh=False, warmup=2, joint=8):
 
           # Ended  joint training, reset master value and subpol choice parameters
           if (num_ep % (warmup + joint + num_test_runs)) == 0:
-            print("Resetting master policy")
+            logger.info('Resetting master policy...')
             a.reset_master()
 
-          print('Warming Up...')
+          logger.info('Warming up...')
 
         # Joint training period where both master and subpolicies trained of "joint" episodes
         elif mlsh and (num_ep % (warmup + joint + num_test_runs) < warmup + joint):
           a.train_only_master = False
           a.test_run = False
 
-          print('Joint Training...')
+          logger.info('Joint training...')
 
         # Do test runs after joint training has finished
         elif mlsh:
           a.test_run = True
-          print('Testing...')
+          logger.info('Testing...')
 
       num_ep += 1
 
@@ -65,4 +67,4 @@ def run_loop(agents, env, max_frames=0, mlsh=False, warmup=2, joint=8):
     pass
   finally:
     elapsed_time = time.time() - start_time
-    print("Took %.3f seconds" % elapsed_time)
+    logger.info('Took %.3f seconds', elapsed_time)
