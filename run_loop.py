@@ -64,6 +64,7 @@ def run_loop(agents, env, max_frames=0, mlsh=False, warmup=2, joint=8):
         if is_done:
           break
   except KeyboardInterrupt:
+    logger.warning('Stopped with KeyboardInterrupt')
     pass
   finally:
     elapsed_time = time.time() - start_time

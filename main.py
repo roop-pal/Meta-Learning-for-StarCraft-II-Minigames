@@ -96,7 +96,7 @@ ch = logging.StreamHandler()
 ch.setLevel(logging.ERROR)
 # create formatter and add it to the handlers
 
-formatter = logging.Formatter('[%(asctime)s %(levelname)s]\t %(message)s')
+formatter = logging.Formatter('[%(asctime)s %(levelname)s] [%(threadName)s]\t %(message)s')
 fh.setFormatter(formatter)
 ch.setFormatter(formatter)
 # add the handlers to the logger
@@ -124,6 +124,7 @@ def pysc2_run_thread(agent_cls, map_name, visualize):
 
 def run_thread(agent, map_name, visualize, mlsh=False):
   scores = list()
+  logger.info('Launching new SC2 environment...')
   with sc2_env.SC2Env(
     map_name=map_name,
     agent_race=FLAGS.agent_race,
@@ -135,9 +136,12 @@ def run_thread(agent, map_name, visualize, mlsh=False):
     visualize=visualize) as env:
     env = available_actions_printer.AvailableActionsPrinter(env)
 
-    init_time = time.time()
+    logger.info('New SC2 environment launched successfully')
+    logger.info('Minigame: %s', map_name)
 
+    ep_counter = 0 # counts episode for this particular thread
     replay_buffer = [] # will get observations of each step during an episode to learn once episode is done
+    
     for recorder, is_done in run_loop([agent], env, MAX_AGENT_STEPS, mlsh=mlsh, warmup=FLAGS.warmup_len, joint=FLAGS.joint_len):
       if FLAGS.training:
         replay_buffer.append(recorder)
@@ -145,6 +149,7 @@ def run_thread(agent, map_name, visualize, mlsh=False):
           # end of an episode, agent has interacted with env and now we learn from the "replay"
           counter = 0
           with LOCK:
+            # counter counts episode accross all threads:
             global COUNTER
             COUNTER += 1
             counter = COUNTER
@@ -153,18 +158,19 @@ def run_thread(agent, map_name, visualize, mlsh=False):
           agent.update(replay_buffer, FLAGS.discount, learning_rate, counter)
           replay_buffer = []
           if counter % FLAGS.snapshot_step == 1:
+            logger.info('Saving model to %s', SNAPSHOT)
             agent.save_model(SNAPSHOT, counter)
           if counter >= FLAGS.max_steps:
             break
-          if COUNTER % 100 == 0:
-            time_elapsed = round((time.time() - init_time) / 60, 2) # in minutes
-            logger.info('Total time elapsed: %s minutes, Average time per episode: %s', 
-                         time_elapsed, round(time_elapsed/COUNTER, 2))
+
       if is_done:
+        ep_counter += 1
         obs = recorder[-1].observation
         score = obs["score_cumulative"][0]
         scores.append(score)
-        logger.info('Episode score: %s, mean score: %s, max score: %s', score, np.mean(scores[-300:]), np.max(scores))
+        # ep_counter is 
+        logger.info('[Episode %s] Episode score: %.2f, mean score: %.2f, max score: %.2f', 
+                     ep_counter, score, np.mean(scores[-300:]), np.max(scores))
 
     if FLAGS.save_replay:
       env.save_replay(agent.name)
@@ -223,7 +229,7 @@ def _main(unused_argv):
       else:  # i.e. MLSHAgent
         # Create agents on different minigames for each thread
         minigame = MLSH_TRAIN_MAPS[i % len(MLSH_TRAIN_MAPS)]
-        logger.info("[Thread %s] Minigame: ", minigame)
+        # logger.info("[Thread %s] Minigame: ", minigame)
         t = threading.Thread(target=run_thread, args=(agents[i], minigame, False, mlsh))
 
       threads.append(t)
@@ -235,7 +241,7 @@ def _main(unused_argv):
       run_thread(agents[-1], FLAGS.map, FLAGS.render)
     else: # i.e. MLSHAgent
       minigame = MLSH_TRAIN_MAPS[(len(agents) - 1) % len(MLSH_TRAIN_MAPS)]
-      logger.info("[Main thread] Minigame: %s", minigame)
+      # logger.info("[Main thread] Minigame: %s", minigame)
       run_thread(agents[-1], minigame, FLAGS.render, mlsh=mlsh)
 
     logger.info('All threads created')

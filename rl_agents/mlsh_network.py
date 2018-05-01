@@ -113,12 +113,12 @@ def build_atari(minimap, screen, info, msize, ssize, num_action, num_subpol, reu
                                         scope='subpol_choice_'+str(num_thread))
 
   # Get the variables corresponding to the master policy layers above, used for resetting master policy
-  logger.debug('[Thread %s] Master variables:', num_thread)
+  logger.debug('Master variables:')
   master_vars = []
   for var in tf.trainable_variables():
       if 'master_value_'+str(num_thread) in var.name or 'subpol_choice_'+str(num_thread) in var.name:
         master_vars.append(var)
-        logger.debug('[Thread %s] Variable: %s', num_thread, var.name)
+        logger.debug('Variable: %s', var.name)
 
   return spatial_actions, non_spatial_actions, value, master_value, subpol_choice, master_vars
 

@@ -446,7 +446,7 @@ class MLSHAgent(object):
 
     # print("Total game steps: " + str(self.count_steps))
     # print("Thread: " + str(self.num_thread))
-    logger.info('[Thread %s] Total game steps: %s', self.num_thread, self.count_steps)
+    logger.info('Total game steps: %s', self.count_steps)
 
     # Reverse the replay buffer in order to calculate values:
     rbs.reverse()
