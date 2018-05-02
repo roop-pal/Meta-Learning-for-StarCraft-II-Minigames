@@ -9,8 +9,7 @@ import tensorflow as tf
 from pysc2.lib import actions
 from pysc2.lib import features
 
-# from agents.network import build_net
-from rl_agents.network import build_net
+from rl_agents.a3c_network import build_net
 import utils as U
 
 logger = logging.getLogger('starcraft_agent')
