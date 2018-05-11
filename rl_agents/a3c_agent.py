@@ -9,7 +9,10 @@ import tensorflow as tf
 from pysc2.lib import actions
 from pysc2.lib import features
 
-from rl_agents.a3c_network import build_net
+# from rl_agents.a3c_network import build_net
+from rl_agents.a3c_network_atarinet import build_atari
+from rl_agents.a3c_network_fullyconv import build_fcn
+
 import utils as U
 
 logger = logging.getLogger('starcraft_agent')
@@ -56,7 +59,14 @@ class A3CAgent(object):
       self.info = tf.placeholder(tf.float32, [None, self.isize], name='info')
 
       # Build networks
-      net = build_net(self.minimap, self.screen, self.info, self.msize, self.ssize, self.isize, ntype)
+      # net = build_net(self.minimap, self.screen, self.info, self.msize, self.ssize, self.isize, ntype)
+      if ntype == 'atari':
+        net = build_atari(self.minimap, self.screen, self.info, self.msize, self.ssize, self.isize)
+      elif ntype == 'fcn':
+        net = build_fcn(self.minimap, self.screen, self.info, self.msize, self.ssize, self.isize)
+      else:
+        raise 'FLAGS.net must be atari or fcn'
+
       self.spatial_action, self.non_spatial_action, self.value = net
 
       # Set targets and masks
