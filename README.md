@@ -115,5 +115,5 @@ Special thanks to Professor Iddo Drori, our instructor at Columbia University, a
 1. [O. Vinyals, T. Ewalds, S. Bartunov, P. Georgiev. et al. StarCraft II: A New Challenge for Reinforcement Learning. Google DeepMind, 2017.](https://deepmind.com/documents/110/sc2le.pdf)
 2. [V. Mnih, A. Badia, M. Mirza1, A. Graves, T. Harley, T. Lillicrap, D. Silver, K. Kavukcuoglu. Asynchronous Methods for Deep Reinforcement Learning, 2016.](https://arxiv.org/pdf/1602.01783.pdf)
 3. [K. Frans, J. Ho, X. Chen, P. Abbeel, J. Schulman. Meta Learning Shared Hierarchies. arXiv preprint arXiv:1710.09767v2, 2017.](https://arxiv.org/pdf/1710.09767.pdf)<a name="MLSH"></a>
-4. [Xiaowei Hu's PySC2 Agents](https://github.com/xhujoy/pysc2-agents)
+4. [Xiaowei Hu's PySC2 Agents](https://github.com/xhujoy/pysc2-agents) 
 
